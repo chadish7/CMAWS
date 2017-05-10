@@ -21,7 +21,7 @@ An alias for New-CMPassword -Easy
 <b>Get-EC2WindowsOndemandPrice</b>
 Get the EC2 On demand Price for Windows Instances (No SQL). Will expand to Linux and SQL.
 
-<b>Set-R53Record</b
+<b>Set-R53Record</b>
 Created by Sinisa Mikasinovic - six@mypowershell.space. Creates and Updates Route53 resource records
 
 
