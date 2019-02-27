@@ -32,7 +32,7 @@ Created by Sinisa Mikasinovic - six@mypowershell.space. Creates and Updates Rout
 ### Set-CMEC2InstanceType
 Stops and Instance, Changes the Instance Type and Starts it again and re-registers the new IP with R53 again if a DNS Name is provided
 
-### Send-CMSSMPowerShell
+### Invoke-CMSSMPowerShell
 Sends PowerShell script to a SSM Managed Instance waits for execution and brings the result to the console.
 
 ### Connect-RemoteDeskop
