@@ -21,10 +21,7 @@ Easily create new on-demand or spot instances with minimal input while updating 
 Very quickly gets common Windows and Linux AMIS
 
 ### New-CMPassword
-A password generator capabible of creating easy passwords like Kaju1543 (Like Office365)
-
-### New-CMEasyPassword
-An alias for New-CMPassword -Easy
+A password generator capabible of creating easy passwords like Kaju1543 (Like Office365) with the -Easy Parameter
 
 ### Get-EC2WindowsOndemandPrice
 Get the EC2 On demand Price for Windows Instances (No SQL). Will expand to Linux and SQL.
