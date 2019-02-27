@@ -1,22 +1,24 @@
 # CMAWS
-A PowerShell module with AWS helper cmdlets for EC2, SSM and Polly and Route53
+A PowerShell module with AWS helper cmdlets for AWS EC2, SSM and Polly and Route53
 
 ## Installation
 To install the this module using PowerShell 5 or higher use the following command:
 
 Install-Module CMAWS
 
-
 ## Cmdlets available are 
 
 ### Convert-TextToSpeech
-Makes it possible to take one or more text files and run them through Amazon's Polly service to produce output audio files.
+Makes it possible to take one or more text files and run them through Amazon's Polly service to produce output audio files or just play it directly.
 
 ### Get-CMInstances
 Get all EC2 instances in all or selected regions
 
 ### New-CMEC2Instance
-Easily create new on-demand or spot instances with minimal input. Optimized for Windows instances at the moment.
+Easily create new on-demand or spot instances with minimal input while updating DNS for them in Route 53 as well. Supports Windows and Linux instances.
+
+### Get-CMEC2ImageId
+Very quickly gets common Windows and Linux AMIS
 
 ### New-CMPassword
 A password generator capabible of creating easy passwords like Kaju1543 (Like Office365)
@@ -30,7 +32,14 @@ Get the EC2 On demand Price for Windows Instances (No SQL). Will expand to Linux
 ### Set-R53Record
 Created by Sinisa Mikasinovic - six@mypowershell.space. Creates and Updates Route53 resource records
 
+### Set-CMEC2InstanceType
+Stops and Instance, Changes the Instance Type and Starts it again and re-registers the new IP with R53 again if a DNS Name is provided
 
+### Send-CMSSMPowerShell
+Sends PowerShell script to a SSM Managed Instance waits for execution and brings the result to the console.
+
+### Connect-RemoteDeskop
+Connects to Remote Desktop
 
 
 
