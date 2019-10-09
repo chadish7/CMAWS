@@ -25,25 +25,25 @@
     }
     PROCESS 
     {
-        foreach ($Instance in $InstanceID)
+        foreach ($Instance in $InstanceID)       
         {
             $Parameters       = @{InstanceID  = $Instance}
             If ($Region)        {$Parameters.add('Region',$Region)}
-            $RunningInstance  = (Get-EC2Instance @Parameters).RunningInstance
+            $RunningInstance  = (Get-EC2Instance @Parameters).Instances
+            if (!$RunningInstance) {
+                Start-Sleep -Seconds 1
+                $RunningInstance  = (Get-EC2Instance @Parameters).Instances
+            }
             $CurrentState     = $RunningInstance.State.Name.Value
-            if ($CurrentState -like "stop*" -or $CurrentState -like "term*"-or $CurrentState -like "shut*" -or !$CurrentState)
-            {
+            if ($CurrentState -like "stop*" -or $CurrentState -like "term*"-or $CurrentState -like "shut*" -or !$CurrentState){
                 Write-Error "Instance $Instance stopped, stopping or terminated or does not exist, Please start or specify a valid instance"
             }
-            If ((Get-Ec2Subnet -SubnetId $RunningInstance.SubnetId -Region $Region).MapPublicIpOnLaunch -eq $true -and !$RunningInstance.PublicIpAddress)
-            {
+            If ((Get-Ec2Subnet -SubnetId $RunningInstance.SubnetId -Region $Region).MapPublicIpOnLaunch -eq $true -and !$RunningInstance.PublicIpAddress) {
                 $Counter          = 1
-                While ($CurrentState -ne "running" -and !$RunningInstance.PublicIpAddress)
-                {
-                    
+                While ($CurrentState -ne "running" -and !$RunningInstance.PublicIpAddress) {
                     Start-Sleep -Seconds 1
                     $Counter++
-                    $RunningInstance  = (Get-EC2Instance @Parameters).RunningInstance
+                    $RunningInstance  = (Get-EC2Instance @Parameters).Instances
                     $CurrentState     = $RunningInstance.State.Name.Value
                     if ($Counter -ge 30)
                     {
@@ -52,27 +52,20 @@
                 }
             }
             If ($InstanceName) {$HostName  = $InstanceName+"."+$DomainName}
-            Else 
-            {
+            Else {
                 $InstanceName          = $RunningInstance.Tags | Where-Object {$_.Key -eq "Name"} | Select -ExpandProperty Value
             
-                If (!$InstanceName) 
-                {
+                If (!$InstanceName) {
                     Write-Error "No Name Tag on instance $Instance, can't apply DNS Name."
                     $HostName     = $RunningInstance.PublicDnsName
-                } 
-                Else 
-                {
+                }  Else {
                     $HostName  = $InstanceName+"."+$DomainName
                 }
             }
             
-            If ($RunningInstance.PublicIpAddress) 
-            {
+            If ($RunningInstance.PublicIpAddress) {
                 Set-R53Record -Domain $DomainName -Type A -Name $InstanceName -Value $RunningInstance.PublicIpAddress -TTL 30 | Out-Null
-            } 
-            Else 
-            {
+            } Else {
                 Set-R53Record -Domain $DomainName -Type A -Name $InstanceName -Value $RunningInstance.PrivateIpAddress -TTL 30 | Out-Null
             }
             $ObjProperties = @{

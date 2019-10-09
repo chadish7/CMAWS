@@ -34,9 +34,6 @@
    Name                  : MyInstance
    Hostname              : ec2-34-248-2-178.eu-west-1.compute.amazonaws.com
    InstanceType          : t2-micro
-   BidPrice              : 
-   OnDemandPrice         : 0.017
-   Savings               : 0 %
    ImageName             : WINDOWS_2016_BASE
    ImageID               : ami-58a1a73e
    KeyName               : MyKeyPair
@@ -49,25 +46,18 @@
    Name                  : MyInstance
    Hostname              : MyInstance.Mydomain.com
    InstanceType          : t2-micro
-   BidPrice              : 
-   OnDemandPrice         : 0.017
-   Savings               : 0 %
    ImageName             : WINDOWS_2012R2_BASE
    ImageID               : ami-40003a26
    KeyName               : MyKeyPair
 
 .EXAMPLE
    C:\> New-CMEC2Instance -InstanceType t2.micro -Region us-east-1 -Name MyInstance -DomainName mydomain.com -SpotRequest
-   WARNING: Spot Instances not available for T1 and T2 instance types, switching to on demand.
 
    InstanceID            : i-1234567890abcdef
    Region                : us-east-1
    Name                  : MyInstance
    Hostname              : MyInstance.Mydomain.com
    InstanceType          : t2-micro
-   BidPrice              : 
-   OnDemandPrice         : 0.017
-   Savings               : 0 %
    ImageName             : WINDOWS_2016_BASE
    ImageID               : ami-40003a26
    KeyName               : MyKeyPair
@@ -80,9 +70,18 @@
    Name                  : MySpotInstance
    Hostname              : MySpotInstance.Mydomain.com
    InstanceType          : m3.medium
-   BidPrice              : 0.0741
-   OnDemandPrice         : 0.13
-   Savings               : 55 %
+   ImageName             : WINDOWS_2016_BASE
+   ImageID               : ami-58a1a73e
+   KeyName               : MyKeyPair
+
+.EXAMPLE
+   C:\> New-CMEC2Instance -InstanceType m3.medium -Region us-east-1 -Name TestInstance -DomainName mydomain.com -RootVolumeSize 50 -SecondaryVolumeSize 100
+   
+   InstanceID            : i-1234567890abcdef
+   Region                : us-east-1
+   Name                  : TestInstance
+   Hostname              : TestInstance.Mydomain.com
+   InstanceType          : m3.medium
    ImageName             : WINDOWS_2016_BASE
    ImageID               : ami-58a1a73e
    KeyName               : MyKeyPair
@@ -98,59 +97,55 @@
         [String] $InstanceType,
         # Applies this name tag to the instance after creation, if -DomainName is specified as well then registers a DNS CNAME for your instance using this name
         [string] $Name,
-        # If -Name is also specified then a DNS CNAME is registered in this domain, provided the domain is hosted in R53 and you have rights to do so.
+        # E.g mydomain.com. Must be used with -Name, then a DNS CNAME is registered, provided it is a Route53 hosted zone and you have rights.
         [string] $DomainName,
-        # Version of Windows e.g. 2012R2 or 2016. Default is 2012R2
-        [ValidateSet("WindowsServer2019",
+        # Version of Windows e.g. 2012R2 or 2016. Default is 2016
+        [ValidateSet(
+            "WindowsServer1903", 
             "WindowsServer1809", 
             "WindowsServer1803",
-            "WindowsServer1709",
+            "WindowsServer2019",
             "WindowsServer2016",
             "WindowsServer2012R2",
             "WindowsServer2012",
             "WindowsServer2008R2",
-            "WindowsServer2008",
-            "WindowsServer2003",
-            "2019",
+            "1903",
             "1809",
             "1803",
-            "1709",
+            "2019",
             "2016",
             "2012R2",
             "2012",
             "2008R2",
-            "2008",
-            "2003",
-            "AmazonLinux",
-            "Ubuntu18.04",
             "Ubuntu16.04",
-            "AmazonLinux2")]
-        [string] $OsVersion = 2016,
-
-        [Parameter(ParameterSetName='SearchBaseIds')]
-        [switch] $Base=$true,
+            "Ubuntu18.04",
+            "AmazonLinux",
+            "AmazonLinux2",
+            "AmazonLinux2NetCore",
+            "UbuntuNetCore",
+            "EcsAmazonLinux",
+            "EcsAmazonLinux2"
+        )]
+        [string] $OsVersion = "2016",
 
         [Parameter(ParameterSetName='SearchSqlIds')]
-        [ValidateSet("2017","2016","2014","2012","2008R2","2008","2005")]
+        [ValidateSet("2017","2016","2014","2012","2008R2","2008")]
         [string] $SqlVersion,
 
         [Parameter(ParameterSetName='SearchSqlIds')]
         [ValidateSet("Express", "Web","Standard","Enterprise")]
         [string] $SqlEdition = "Standard",
-
         [switch] $Core,
-
         # Instance Profile (with IAM Role) to attach to new Instance
         [string] $InstanceProfile,
         # Path to User data file , using Your My Documents folder as a root
         [string] $UserData,
-        # What Percrentage to add to the lowest Spot Price to ensure instance's longevity
-        [int]    $MarkUp     = 1,
         #Specify an AMI id like ami-2b8c8452
         [Parameter(ValueFromPipeline       =$true,
             ValueFromPipelineByPropertyName=$true,
             ParameterSetName               ='ImageId',
             Mandatory                      =$true)]
+        [ValidatePattern("^ami-([\da-f]{8}|[\da-f]{17})$")]
         [string] $ImageId,
         # The name of the Security Group, not the Security Group ID. The Function will get the ID. If none is specified the default Security Group is used.
         [string] $SecurityGroupName,
@@ -159,12 +154,20 @@
         # The Name of the EC2 KeyPair to use when creating the instance
         [string] $KeyName,
         # The ID of the VPC you wish to use, if not specified, the default one is used.
+        [ValidatePattern("^vpc-([\da-f]{8}|[\da-f]{17})$")]
         [string] $VpcId,
-        # Last letter of the Availability Zone like a, b, c, d or e, if none specified, a is used
+        # Last letter of the Availability Zone like a, b, c, d or e, if none specified, a random one is used
         [string] $AZSuffix,
+        # The Subnet in which to launch the Instance(s). Overrides VpcId if and AZsuffix parameters if specified. If not specified then a random subnet is chosen in the default VPC.
+        [ValidatePattern("^subnet-([\da-f]{8}|[\da-f]{17})$")]
         [string] $SubNetId,
         [ValidateRange(1,15)]
-        [Int]    $NetworkInerfaces = 1
+        [Int]    $NetworkInterfaces = 1,
+        [Int]    $Count=1    ,
+        # Specifies the Root EBS volume size in GB
+        [Int]    $RootVolumeSize,
+        # Speciies the Secondary EBS volume size if there is one present in the AMI. If not it will create a new volume and attach it.
+        [Int]    $SecondaryVolumeSize
 
     )
     <#DynamicParam 
@@ -193,41 +196,42 @@
         
     }
     Process {
-        if ($SqlVersion) 
-        {
-            Clear-Variable Base
-            if ($InstanceType -like "t2.*" -and $SqlEdition -ne "Express") {Write-Error "Non Express editions of SQL Server are not permited to run on t2 instance types"}
+        if ($SqlVersion) {
+            if ($InstanceType -like "t*.*" -and $SqlEdition -ne "Express") {Write-Error "Non Express editions of SQL Server are not permited to run on T2/T3 instance types"}
         }
-        [int]$Count               = 1 
         
         Write-Verbose          "Geting On Demand Instance Pricing"
-        $OndemandPrice         = Get-EC2WindowsOndemandPrice -InstanceType $InstanceType -Region $Region
+        $OndemandPrice       = Get-EC2WindowsOndemandPrice -InstanceType $InstanceType -Region $Region
         
-        if (!$ImageID) 
-        {
+        if (!$ImageID) {
             Write-Verbose       "Getting Current AMI for Selected OS"
             $ImageParam      = @{OsVersion = $OsVersion}
-            If ($Core)       {$ImageParam.Add('Core',$true)}
-            If ($Region)     {$ImageParam.Add('Region',$Region)}
+            If ($Core)       {$ImageParam.Add('Core',      $true)}
+            If ($Region)     {$ImageParam.Add('Region',    $Region)}
             If ($SqlVersion) {$ImageParam.Add('SqlVersion',$SqlVersion)}
             If ($SqlEdition) {$ImageParam.Add('SqlEdition',$SqlEdition)}
-            $ImageID           = Get-CMEC2ImageId @ImageParam
+            $Image           = Get-CMEC2ImageId @ImageParam
+            $ImageID         = $Image.ImageId
+        } else {
+            $ImageParam      = @{ImageId = $ImageId}
+            If ($Region)     {$ImageParam.Add("Region",$Region)}
+            try {$Image      = Get-EC2Image @ImageParam }
+            Catch {}
         }
-        if (!$ImageID) {         Write-Error "Could not find an image with Search criteria in region $Region"}
-        if (!$Keyname) 
-        {
-            Write-Verbose       "Getting first KeyPair for Region"
-            $KeyName           = (Get-EC2KeyPair -Region $Region)[0].KeyName
+        if (!$ImageID -or !$Image) { Write-Error "Could not find an image with Search criteria in region $Region"}
+        if (!$Keyname) {
+            Write-Verbose  "Getting first KeyPair for Region"
+            $KeyName  = (Get-EC2KeyPair -Region $Region)[0].KeyName
         }
-        if (!$KeyName)          {Write-Error "No EC2 Key Pairs found in region $Region, please create one"}
-        If ($UserData)          {$UserData64 = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($UserData))}
-        If (!$SubNetId){ 
+        if (!$KeyName)    {Write-Error "No EC2 Key Pairs found in region $Region, please create one"}
+        If ($UserData)    {$UserData64 = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($UserData))}
+        If (!$SubNetId) { 
             If (!$VpcId)   
             {
-                Write-Verbose       "Getting default VPC"
-                $VpcId             = (Get-EC2Vpc -Region $Region| Where {$_.IsDefault -eq $true}).VpcId
+                Write-Verbose   "Getting default VPC"
+                $VpcId  = (Get-EC2Vpc -Region $Region| Where {$_.IsDefault -eq $true}).VpcId
             }
-            If (!$VpcId)   {         Write-Error "Could not find default VPC in region $Region, Please specify either a VPC or a Subnet Id"}
+            If (!$VpcId)   { Write-Error "Could not find default VPC in region $Region, Please specify either a VPC or a Subnet Id" }
             Write-Verbose       "Getting Subnet for name $AvailabilityZone"
             $SubNets = Get-EC2Subnet -Region $Region -Filter @{Name='vpc-id';Values=$VpcId}
             If ($AvailabilityZone) {$SubNetId = ( $SubNets | where {$_.AvailabilityZone -eq $AvailabilityZone})[0].SubnetId}
@@ -238,27 +242,37 @@
         If (!$VpcId) {Write-Error "Could not determine VPC, check you have a default VPC in the region and if SubnetId is specified, make sure it is valid"}
     
         If ($SecurityGroupName)  {
-            Write-Verbose       "Getting Security Group for name $SecurityGroupName"
+            Write-Verbose       "finding Security Group named $SecurityGroupName"
             $SecurityGroupId   = (Get-EC2SecurityGroup -Region $Region | where {$_.GroupName -eq $SecurityGroupName -and $_.VpcId -eq $VpcId})[0].GroupId
-            If (!$SecurityGroupId) {Write-Error "Security Group with $SecurityGroupName cannot be found"}
+            If (!$SecurityGroupId) {Write-Warning "Security Group with $SecurityGroupName cannot be found, using default"}
         } 
-        else {
-            Write-Verbose       "Getting Security Group for VPC $VpcId"
+        if (!$SecurityGroupId) {
+            Write-Verbose       "Getting default Security Group for VPC $VpcId"
             $SecurityGroupId   = (Get-EC2SecurityGroup -Region $Region | where {$_.GroupName -eq "default" -and $_.VpcId -eq $VPCId})[0].GroupId
+            If (!$SecurityGroupId) {Write-Error "No Default security group found in $VpcId"}
         }
-        If (!$SecurityGroupId)  {
-            Write-Error "Could not find a Security Group with the name $SecurityGroupName in region $Region"
+        If ($RootVolumeSize){
+            $BDMs = $Image.BlockDeviceMappings
+            ($BDMs | Where {$_.DeviceName -eq $Image.RootDeviceName}).EBS.VolumeSize = $RootVolumeSize
         }
-    
-        $Params            = @{
-            Region               = $Region
-            MinCount             = $Count
-            MaxCount             = $Count
-            InstanceType         = $InstanceType
-            SecurityGroupId      = $SecurityGroupId
-            ImageId              = $ImageId
-            SubnetId             = $SubNetId
-            KeyName              = $KeyName
+        If ($SecondaryVolumeSize){
+            If (!$BDMs) {$BDMs = $Image.BlockDeviceMappings}
+            Try {
+                ($BDMS | Where {$_.DeviceName -ne $Image.RootDeviceName -and $null -ne $_.Ebs})[0].EBS.VolumeSize = $SecondaryVolumeSize
+            } Catch {
+                Write-Warning "Could set secondary Volume Size as AMI doesn't appear to have a secondary volume"
+            }
+        }
+
+        $Params    = @{
+            Region           = $Region
+            MinCount         = $Count
+            MaxCount         = $Count
+            InstanceType     = $InstanceType
+            SecurityGroupId  = $SecurityGroupId
+            ImageId          = $ImageId
+            SubnetId         = $SubNetId
+            KeyName          = $KeyName
         }
             
         if ($Name) {
@@ -277,19 +291,17 @@
         If ($SpotInstance) {
             $InstanceMarketOption = @{
                 MarketType ="Spot"
-                <#SpotOptions = @{
-                    InstanceInterruptionBehavior = "stop"
-                    SpotInstanceType = "persistent"
-                }#>
             }
             $Params.Add("InstanceMarketOption",$InstanceMarketOption)
         }
             
             If ($UserData64)      {$Params.Add("UserData",$UserData64)}
             If ($InstanceProfile) {$Params.Add("InstanceProfile_Name",$InstanceProfile)}
-            $InstanceId       = (New-EC2Instance @Params).Instances.InstanceId
+            If ($BDMs) {$Params.Add("BlockDeviceMapping",$BDMs)}
             
-        if ($Name) {
+            $InstanceId       = (New-EC2Instance @Params).Instances.InstanceId
+                    
+        if ($Name -and $Count -eq 1) {
             If ($DomainName) {
                 $DNSParams        = @{InstanceId    = $InstanceId}
                 if($Region)        {$DNSParams.Add('Region',$Region)}
@@ -299,20 +311,16 @@
         } else {
             $HostName = $RunningInstance.PublicIPAddress
         }
-        $OutputProperties = @{
+        [PSCustomObject]@{
             InstanceId            = $InstanceId
             Region                = $Region
             Name                  = $Name
             Hostname              = $HostName
             InstanceType          = $InstanceType
-            BidPrice              = $BidPrice
-            OnDemandPrice         = $OnDemandPrice
-            Savings               = "$Savings %"
-            ImageName             = $ImageName
+            ImageName             = $Image.Name
             ImageId               = $ImageId
             KeyName               = $KeyName
             InstanceProfile       = $InstanceProfile
         }
-        New-Object -TypeName PSObject -Property $OutputProperties
     }
 }

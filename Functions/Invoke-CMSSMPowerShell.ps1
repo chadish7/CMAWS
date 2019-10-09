@@ -62,7 +62,8 @@
         [string[]]    $InstanceId,
         [string]      $Region,
         [Parameter(Mandatory               =$true)]
-        [ScriptBlock] $Command
+        [ScriptBlock] $Command,
+        [switch]      $NoWait
     )
     BEGIN {
         $ErrorActionPreference      = "Stop"
@@ -77,25 +78,29 @@
         foreach ($Instance in $InstanceId){
             $Parameters    = @{InstanceID  = $Instance}
             if ($Region)     {$Parameters.add('Region',$Region)}
-            $CommandID     = (Send-SSMCommand @Parameters -DocumentName "AWS-RunPowerShellScript" -Parameter @{commands="$Command"}).CommandId
-            While (!$false) {
-                Start-Sleep -Seconds 1
-                $SSMCommandStatus    = (Get-SSMCommand @Parameters -CommandId $CommandID).Status.Value
-                if ($SSMCommandStatus -eq "Success") {
-                    $SSMOutPut       = (Get-SSMCommandInvocationDetail @Parameters -CommandId $CommandID).StandardOutputContent
-                    break
-                } elseif ($SSMCommandStatus -eq "Failed") {
-                    Write-Error "SSM Run Command to Failed"
-                    break
+            $SentCommand     = Send-SSMCommand @Parameters -DocumentName "AWS-RunPowerShellScript" -Parameter @{commands="$Command"}
+            if (!$NoWait) {
+                While (!$false) {
+                    Start-Sleep -Seconds 1
+                    $SSMCommandStatus    = (Get-SSMCommand @Parameters -CommandId $SentCommand.CommandId).Status.Value
+                    if ($SSMCommandStatus -eq "Success") {
+                        $SSMOutPut       = (Get-SSMCommandInvocationDetail @Parameters -CommandId $SentCommand.CommandId).StandardOutputContent
+                        break
+                    } elseif ($SSMCommandStatus -eq "Failed") {
+                        Write-Error "SSM Run Command to Failed"
+                        break
+                    }
                 }
+                $OutputProperties = @{
+                    Output        = $SSMOutPut
+                    InstanceId    = $Instance
+                }
+                $OutputObject     = New-Object -TypeName PSObject -Property $OutputProperties
+                Write-Output      $OutputObject
+            } else {
+                $SentCommand
             }
-            $OutputProperties = @{
-                Output        = $SSMOutPut
-                InstanceID    = $Instance
-            }
-            $OutputObject     = New-Object -TypeName PSObject -Property $OutputProperties
-            Write-Output      $OutputObject
-        }
+        } 
     }
     END{}
 }

@@ -7,7 +7,7 @@
             ValueFromPipeline=$true,
             ValueFromPipelineByPropertyName=$true
         )]
-        [string[]]  $InstanceID,
+        [string[]]  $InstanceId,
         [string]    $DomainName,
         [string]    $Region
     )

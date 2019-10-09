@@ -11,7 +11,7 @@
     } 
     Foreach ($Reg in $Region) {
         If ($AllRegions -notcontains $Reg) {Write-Error "$Region is not a valid AWS Region, Valid regions are $AllRegions"}
-        $Instances = (Get-EC2Instance -Region $Reg).RunningInstance 
+        $Instances = (Get-EC2Instance -Region $Reg).Instances
         Foreach ($Instance in $Instances) {  
             $Properties    = @{
                 Name            = $Instance.Tags | Where-Object {$_.Key -eq "Name"} | Select -ExpandProperty Value

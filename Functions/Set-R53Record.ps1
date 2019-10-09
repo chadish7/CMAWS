@@ -54,10 +54,8 @@
     Param (
         [Parameter(Mandatory=$True)]
         [String]   $Domain,
-        [Parameter(
-            Mandatory=$True,
-            ValidateSet="A","CNAME","TXT","MX","AAAA","PTR","NS","SOA"
-        )]
+        [Parameter(Mandatory=$True)]
+        [ValidateSet("A","CNAME","TXT","MX","AAAA","PTR","NS","SOA")]
         [String]   $Type,
         [String]   $Name,
         [Parameter(Mandatory=$True)]
@@ -71,13 +69,26 @@
     if ($Name -and $Name.Substring($Name.Length-1) -ne ".") {$Name = $Name + "."}
 
     $Change                          = New-Object Amazon.Route53.Model.Change
-    # UPSERT: If a resource record set doesn't already exist, AWS creates it. If it does, update it with values in the request.
     $Change.Action                   = "UPSERT"
     $Change.ResourceRecordSet        = New-Object Amazon.Route53.Model.ResourceRecordSet
     $Change.ResourceRecordSet.Name   = "$Name$Domain"
     $Change.ResourceRecordSet.Type   = $Type
     $Change.ResourceRecordSet.TTL    = $TTL
     $Change.ResourceRecordSet.ResourceRecords.Add(@{Value=if ($Type -eq "TXT") {"""$Value"""} else {$Value}})
+
+    <#$Change =@{
+        # UPSERT: If a resource record set doesn't already exist, AWS creates it. If it does, update it with values in the request.
+        Action     = "UPSERT"
+        ResourceRecordSet = @{
+            Name   = "$Name$Domain"
+            Type   = $Type
+            TTL    = $TTL
+            ResourceRecords = @{
+                Value=if ($Type -eq "TXT") {"""$Value"""} else {$Value}
+            }
+        }
+    }#>
+    
 
     $HostedZone = @(Get-R53HostedZones | Where-Object {$_.Name -eq $Domain})
     If (!$HostedZone) {Write-Error "No Route 53 Hosted Zone found for $Domain"}

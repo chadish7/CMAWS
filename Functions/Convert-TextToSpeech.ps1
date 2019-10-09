@@ -8,17 +8,21 @@
 .NOTES   
     Name:        Convert-TextToSpeech
     Author:      Chad Miles
-    DateUpdated: 2017-08-16
-    Version:     1.3.0
+    DateUpdated: 2019-08-10
+    Version:     1.4.0
 
 .EXAMPLE
    Convert-TextToSpeech input.txt -Voice Joanna
 
    This will output input.mp3 using Amy voice
 .EXAMPLE
-   Convert-TextToSpeech *.txt -Voice Amy -OutputFormat ogg
+   Convert-TextToSpeech *.txt -Voice Amy -OutputFormat ogg -Speed fast
    
-   This will convert all the .txt files to .ogg files in Joanna voice.
+   This will convert all the .txt files to .ogg files in Joanna voice speaking in a fast speed.
+.EXAMPLE
+   Convert-TextToSpeech -String (Get-ClipBoard) -Voice Amy -UseNeuralEngine -PlayOutput
+   
+   This will grab the Text from the Clipboard, Synthesise it using Amy's Voice with the new Nueral engine and play the output with the default audio player
 #>
     [CmdletBinding()]
     [Alias('tts')]
@@ -36,31 +40,44 @@
         [string[]]  $String,
         # Specify the Base name of the file to output to, without the extention
         [Parameter(ParameterSetName='String')]
-        [string]    $OutputFile='Output',
+        [string]    $OutputFile='Output-'+(New-Guid),
         [switch]    $PlayOutput,
         [ValidateSet('x-fast','x-slow','fast', 'slow', 'medium')]
-        [string]    $Speed = 'medium'
+        [string]    $Speed = 'medium',
+        [switch]    $UseNeuralEngine
         
     )
     if ($OutputFormat -eq 'pcm'){$FileExtension = 'wav'}
     else {$FileExtension = $OutputFormat}
     $ErrorActionPreference = 'Stop'
     Write-Verbose 'Validating Voice'
-    $VoiceIds   = (Get-POLVoice).Id.Value
-    if ($VoiceIds -notcontains $Voice) {
+    $VoiceIds   = Get-POLVoice
+    if ($VoiceIds.Id.Value -notcontains $Voice) {
         Write-Error "$Voice is not a valid voice, Valid voices are $VoiceIds"
+    }
+    If ($UseNeuralEngine) {
+        If (($VoiceIds | Where {$_.Id.Value -eq $Voice}).SupportedEngines -notcontains "neural"){
+            Write-Warning "The $Voice voice does not yet support the nueral engine, falling back to standard"
+            $UseNeuralEngine = $False
+        }
     }
     $Speed          = $Speed.ToLower()
     $PreText        = '<speak><prosody rate="'+$Speed+'">'
     $PostText       = '</prosody><break time="350ms"/></speak>'
     $PollyLimit     = 3000
+    $PollyParams    = @{
+        TextType      = "ssml"
+        VoiceId       = $Voice 
+        OutputFormat  = $OutputFormat
+    }
+    If ($UseNeuralEngine) {$PollyParams.Add("Engine","neural")}
     if ($InputFiles){
         Foreach ($InputFile in Get-ChildItem $InputFiles) {
-            $Text       = Get-Content $InputFile
+            $Text          = Get-Content $InputFile
             $LineCount     = 1
             Write-Verbose "Checking $InputFile for long lines"
             Foreach ($Line in $Text){
-                $Line   = $Line.Replace('&',' and ').Replace('  ',' ')
+                $Line = $Line.Replace('&',' and ').Replace('  ',' ')
                 If ($Line.Length -ge $PollyLimit-($PreText.Length + $PostText.Length)){
                     $ShortName = $InputFile.Name
                     Write-Warning "$ShortName was skipped as Line $LineCount is longer than $PollyLimit characters, which is the longest we can submit to Polly excluding SSML tags and spaces"
@@ -78,7 +95,7 @@
                 Try {
                     Foreach ($Line in $Text){
                         $Line         = $Line.Replace('&',' and ').Replace('  ',' ')
-                        (Get-POLSpeech -Text $PreText$Line$PostText -TextType ssml -VoiceId $Voice -OutputFormat $OutputFormat).AudioStream.CopyTo($OutputStream)
+                        (Get-POLSpeech -Text $PreText$Line$PostText @PollyParams).AudioStream.CopyTo($OutputStream)
                         $LineCount++
                     }
                 } Catch {
@@ -116,7 +133,7 @@
             $LineCount++
             $Line   = $Line.Replace('&',' and ').Replace('  ',' ')
             Try {
-                (Get-POLSpeech -Text $PreText$Line$PostText -TextType ssml -VoiceId $Voice -OutputFormat $OutputFormat).AudioStream.CopyTo($OutputStream)
+                (Get-POLSpeech -Text $PreText$Line$PostText @PollyParams).AudioStream.CopyTo($OutputStream)
             } Catch {
                 Write-Error "Error while processing the String in Line $LineCount : "$_.Exception.InnerException
                 $OutputStream.Close()
