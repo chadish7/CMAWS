@@ -53,10 +53,10 @@
     Write-Verbose 'Validating Voice'
     $VoiceIds   = Get-POLVoice
     if ($VoiceIds.Id.Value -notcontains $Voice) {
-        Write-Error "$Voice is not a valid voice, Valid voices are $VoiceIds"
+        Write-Error "$Voice is not a valid voice, Valid voices are $($VoiceIds.Id.Value)"
     }
     If ($UseNeuralEngine) {
-        If (($VoiceIds | Where {$_.Id.Value -eq $Voice}).SupportedEngines -notcontains "neural"){
+        If (($VoiceIds | Where-Object {$_.Id.Value -eq $Voice}).SupportedEngines -notcontains "neural"){
             Write-Warning "The $Voice voice does not yet support the nueral engine, falling back to standard"
             $UseNeuralEngine = $False
         }
@@ -117,7 +117,6 @@
     }
     If ($String){
         $LineCount = 0
-        $Dir = (Get-ChildItem -Path .).Directory
         foreach ($Line in $String){
             $LineCount++
             $Line   = $Line.Replace('&',' and ').Replace('  ',' ')
