@@ -28,7 +28,9 @@
     [Alias('tts')]
     Param (
         # The Input file(s), wilcards and just pointing to a folder itself work fine, just know that it will suck in what you ever you give it.
-        [Parameter(ParameterSetName='Files')]
+        [Parameter(ParameterSetName='Files',
+            Position=0
+        )]
         [string[]]  $InputFiles, 
         # Format of the output audio in either mp3, ogg or pcm
         [ValidateSet('mp3', 'ogg', 'pcm')]
@@ -36,7 +38,9 @@
         # The voice used, default is Amy (English - UK), for all voices please run Get-POLVoice | select -ExpandProperty Id
         [string]    $Voice = 'Amy',
         # Just process a String not a written file
-        [Parameter(ParameterSetName='String')]
+        [Parameter(ParameterSetName='String',
+            Position=0
+        )]
         [string[]]  $String,
         # Specify the Base name of the file to output to, without the extention
         [Parameter(ParameterSetName='String')]

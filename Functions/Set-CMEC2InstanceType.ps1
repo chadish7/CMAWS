@@ -50,6 +50,7 @@
         [string]   $Region,
         [Parameter(Mandatory=$true)]
         [ValidateScript({(Get-CmEc2InstanceTypes)})]
+        [Alias("Type")] 
         [String]   $InstanceType,
         [string]   $DomainName
     )
@@ -74,7 +75,8 @@
         $InstanceType               = $PSBoundParameters.InstanceType
         $ErrorActionPreference      = "Stop"
         If ($Region){
-            $AllRegions    = (Get-AWSRegion).Region
+            $AllRegions = (Get-AWSRegion).Region
+            $AllRegions += "af-south-1"
             If ($AllRegions -notcontains $Region) {
                 Write-Error "$Region is not a valid AWS Region, Valid regions are $AllRegions"
             }

@@ -94,6 +94,7 @@
         [string] $Region,
         [Parameter(Mandatory=$true)]
         [ValidateScript({(Get-CmEc2InstanceTypes)})]
+        [Alias("Type")] 
         [String] $InstanceType,
         # Applies this name tag to the instance after creation, if -DomainName is specified as well then registers a DNS CNAME for your instance using this name
         [string] $Name,
@@ -101,22 +102,20 @@
         [string] $DomainName,
         # Version of Windows e.g. 2012R2 or 2016. Default is 2016
         [ValidateSet(
+            "WindowsServer2004", 
+            "WindowsServer1909", 
             "WindowsServer1903", 
-            "WindowsServer1809", 
-            "WindowsServer1803",
             "WindowsServer2019",
             "WindowsServer2016",
             "WindowsServer2012R2",
             "WindowsServer2012",
-            "WindowsServer2008R2",
+            "2004",
+            "1909",
             "1903",
-            "1809",
-            "1803",
             "2019",
             "2016",
             "2012R2",
             "2012",
-            "2008R2",
             "Ubuntu16.04",
             "Ubuntu18.04",
             "AmazonLinux",
@@ -129,7 +128,7 @@
         [string] $OsVersion = "2016",
 
         [Parameter(ParameterSetName='SearchSqlIds')]
-        [ValidateSet("2017","2016","2014","2012","2008R2","2008")]
+        [ValidateSet("2017","2016","2014","2012")]
         [string] $SqlVersion,
 
         [Parameter(ParameterSetName='SearchSqlIds')]
@@ -167,7 +166,9 @@
         # Specifies the Root EBS volume size in GB
         [Int]    $RootVolumeSize,
         # Speciies the Secondary EBS volume size if there is one present in the AMI. If not it will create a new volume and attach it.
-        [Int]    $SecondaryVolumeSize
+        [Int]    $SecondaryVolumeSize,
+        # Default is to Keep the secondary volume on instance terminations, but set this switch to kill it
+        [switch] $TerminateSecondaryVolume
 
     )
     <#DynamicParam 
@@ -201,7 +202,8 @@
         }
         
         Write-Verbose          "Geting On Demand Instance Pricing"
-        $OndemandPrice       = Get-EC2WindowsOndemandPrice -InstanceType $InstanceType -Region $Region
+        Try {$OndemandPrice       = Get-EC2WindowsOndemandPrice -InstanceType $InstanceType -Region $Region}
+        Catch {}
         
         if (!$ImageID) {
             Write-Verbose       "Getting Current AMI for Selected OS"
@@ -258,12 +260,19 @@
         If ($SecondaryVolumeSize){
             If (!$BDMs) {$BDMs = $Image.BlockDeviceMappings}
             Try {
-                ($BDMS | Where {$_.DeviceName -ne $Image.RootDeviceName -and $null -ne $_.Ebs})[0].EBS.VolumeSize = $SecondaryVolumeSize
+                ($BDMs | Where-Object {$_.DeviceName -ne $Image.RootDeviceName -and $null -ne $_.Ebs})[0].EBS.VolumeSize = $SecondaryVolumeSize
             } Catch {
-                Write-Warning "Could set secondary Volume Size as AMI doesn't appear to have a secondary volume"
+                $SecondaryBdm = [Amazon.EC2.Model.BlockDeviceMapping]@{
+                    DeviceName = if ($Image.Platform -eq "Windows"){"xvdb"}
+                        Else {"/dev/sdb"}
+                    Ebs = [Amazon.EC2.Model.EbsBlockDevice]@{
+                        VolumeSize = $SecondaryVolumeSize
+                        DeleteOnTermination = ($TerminateSecondaryVolume -ne $false)
+                    }
+                }
+                $BDMs += $SecondaryBdm
             }
         }
-
         $Params    = @{
             Region           = $Region
             MinCount         = $Count

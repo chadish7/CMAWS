@@ -17,6 +17,7 @@
         If ($Region)
         {
             $AllRegions = (Get-AWSRegion).Region
+            $AllRegions += "af-south-1"
             If ($AllRegions -notcontains $Region) 
             {
                 Write-Error "$Region is not a valid AWS Region, Valid regions are $AllRegions"
@@ -36,7 +37,7 @@
             }
             $CurrentState     = $RunningInstance.State.Name.Value
             if ($CurrentState -like "stop*" -or $CurrentState -like "term*"-or $CurrentState -like "shut*" -or !$CurrentState){
-                Write-Error "Instance $Instance stopped, stopping or terminated or does not exist, Please start or specify a valid instance"
+                Write-Error "Instance $Instance is not running. Please start it or specify another instance"
             }
             If ((Get-Ec2Subnet -SubnetId $RunningInstance.SubnetId -Region $Region).MapPublicIpOnLaunch -eq $true -and !$RunningInstance.PublicIpAddress) {
                 $Counter          = 1

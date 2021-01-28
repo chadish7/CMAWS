@@ -4,7 +4,8 @@
         [string[]]$Region
     )
     $ErrorActionPreference = "Stop"
-    $AllRegions    = (Get-AWSRegion).Region
+    $AllRegions  = (Get-AWSRegion).Region
+    $AllRegions += "af-south-1"
     If (!$Region){
         $Region = $AllRegions
         Write-Warning "Getting instances for all regions, May take some time"

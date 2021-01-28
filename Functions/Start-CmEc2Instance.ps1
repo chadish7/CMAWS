@@ -16,6 +16,7 @@
         $ErrorActionPreference      = "Stop"
         If ($Region){
             $AllRegions = (Get-AWSRegion).Region
+            $AllRegions += "af-south-1"
             If ($AllRegions -notcontains $Region) { 
                 Write-Error "$Region is not a valid AWS Region, Valid regions are $AllRegions"
             }
