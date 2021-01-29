@@ -76,20 +76,6 @@
     $Change.ResourceRecordSet.TTL    = $TTL
     $Change.ResourceRecordSet.ResourceRecords.Add(@{Value=if ($Type -eq "TXT") {"""$Value"""} else {$Value}})
 
-    <#$Change =@{
-        # UPSERT: If a resource record set doesn't already exist, AWS creates it. If it does, update it with values in the request.
-        Action     = "UPSERT"
-        ResourceRecordSet = @{
-            Name   = "$Name$Domain"
-            Type   = $Type
-            TTL    = $TTL
-            ResourceRecords = @{
-                Value=if ($Type -eq "TXT") {"""$Value"""} else {$Value}
-            }
-        }
-    }#>
-    
-
     $HostedZone = @(Get-R53HostedZones | Where-Object {$_.Name -eq $Domain})
     If (!$HostedZone) {Write-Error "No Route 53 Hosted Zone found for $Domain"}
     If ($HostedZone.Count -gt 1) {Write-Warning "More than 1 Hosted Zone found, using $($HostedZone[0].Id)"}
