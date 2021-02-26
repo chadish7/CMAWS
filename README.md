@@ -13,14 +13,14 @@ Install-Module CMAWS
 ### Convert-TextToSpeech
 Makes it possible to take one or more text files and run them through Amazon's Polly service to produce output audio files or just play it directly.
 
-### Get-CMInstances
-Get all EC2 instances in all or selected regions
+### Get-CMEC2Instances
+Get all EC2 instances in multiple regions
 
 ### New-CMEC2Instance
-Easily create new on-demand or spot instances with minimal input while updating DNS for them in Route 53 as well. Supports Windows and Linux instances.
+Easily create new on-demand or spot instances with minimal input while updating DNS hostnames for them in Route 53 as well. Supports Windows and Linux instances.
 
 ### Get-CMEC2ImageId
-Very quickly gets common Windows and Linux AMIS
+Very quickly gets common the latest Windows and Linux AMIS
 
 ### New-CMPassword
 A password generator capabible of creating easy passwords like Kaju1543 (Like Office365) with the -Easy Parameter
@@ -40,5 +40,8 @@ Sends PowerShell script to a SSM Managed Instance waits for execution and brings
 ### Connect-RemoteDeskop
 Connects to Remote Desktop
 
+### Get-CMCFNParameters
+Gets Parameters of a CloudFormation template and outputs them as a hashtable to use with New-CFNStack
 
-
+### Get-AWSCurrentSpend
+Gets the Current and Forecasted AWS Spend
