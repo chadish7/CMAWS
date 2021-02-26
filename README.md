@@ -4,7 +4,9 @@ A PowerShell module with AWS helper cmdlets for AWS EC2, SSM and Polly and Route
 ## Installation
 To install the this module using PowerShell 5 or higher use the following command:
 
+```
 Install-Module CMAWS
+```
 
 ## Cmdlets available are 
 
