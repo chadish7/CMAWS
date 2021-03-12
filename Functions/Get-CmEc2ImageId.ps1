@@ -42,9 +42,9 @@
    The functionality that best describes this cmdlet
 #>
 Function Get-CmEc2ImageId {
-    [CmdletBinding(DefaultParameterSetName='Base')]
+    [CmdletBinding(DefaultParameterSetName = 'Base')]
     Param(
-        [Parameter(Position=0)]
+        [Parameter(Position = 0)]
         #[ValidatePattern('(WindowsServer)?(180(3|9)|1709|20(03|(08|12)(R2)?|16|19))|Ubuntu1(6|8)\.04|AmazonLinux2?')]
         [ValidateSet( 
             "WindowsServer2004", 
@@ -77,17 +77,17 @@ Function Get-CmEc2ImageId {
             "EcswindowsServer2019"
         )]
         [string] $OsVersion = "2016",
-        [ValidateSet("2019","2017","2016","2014","2012")]
+        [ValidateSet("2019", "2017", "2016", "2014", "2012")]
         [string] $SqlVersion,
 
-        [ValidateSet("Express", "Web","Standard","Enterprise")]
+        [ValidateSet("Express", "Web", "Standard", "Enterprise")]
         [string] $SqlEdition = "Standard",
 
         [switch] $Core,
         [switch] $Containers,
         [switch] $NoSwitching,
         
-        [ValidateScript({@((Get-AWSRegion).Region)})]
+        [ValidateScript( { @((Get-AWSRegion).Region) })]
         [string] $Region,
 
         [ValidateSet(
@@ -107,154 +107,151 @@ Function Get-CmEc2ImageId {
             "Spanish",
             "Swedish",
             "Turkish"
-            )]
+        )]
         [string] $Language = "English",
         [switch] $ImageIdOnly
     )
     $ErrorActionPreference = "Stop"
     # if(!$Region){$Region = (Get-DefaultAWSRegion).Region}
     
-    If ($OsVersion -like "WindowsServer*"){
+    If ($OsVersion -like "WindowsServer*") {
         $OsVersion = $OsVersion.Substring(13)
     } 
-    If ($OsVersion -match '(190(3|9)|20((04)|(12)(R2)?|16|19))'){
+    If ($OsVersion -match '(190(3|9)|20((04)|(12)(R2)?|16|19))') {
         $Base = $True
-        $LatestStable = "1909","2019"
-        if ($OsVersion -match '(190(3|9)|2004)'){$Core = $True}
-        if ($Core -and $OsVersion -notmatch '190(3|9)|20(04|12(R2)?|16|19)')      {
+        $LatestStable = "1909", "2019"
+        if ($OsVersion -match '(190(3|9)|2004)') { $Core = $True }
+        if ($Core -and $OsVersion -notmatch '190(3|9)|20(04|12(R2)?|16|19)') {
             Write-Warning "Core AMIs only available for Windows Server 2012R2 and later, Switching to Windows Server $($LatestStable[0])"
             $OsVersion = $LatestStable[0]
         }
         if ($Containers) {
             $Base = $False
-            if  ($OsVersion -notmatch '190(3|9)|20(04|16|19)')  {
+            if ($OsVersion -notmatch '190(3|9)|20(04|16|19)') {
                 Write-Warning "Container AMIs only available for Windows Server 2016 and later, Switching to Windows Server $($LatestStable[1])"
                 $OsVersion = $LatestStable[1]
             }
         }
         if ($SqlVersion) {
             $Base = $False
-            If ($Core -and $OsVersion -ne 2016 -and $SqlVersion ) { Write-Warning "SQL only avaialable on Core Editions of Windows Server 2016, Switching to Full"; $Core = $False}
-            If ($Containers) { Write-Warning "SQL AMI not available with Containers, Switching to Non-Containers"; $Containers = $False}
-            If ($SqlVersion -eq "2012") {$SqlSp = "_SP4"}
-            If ($SqlVersion -eq "2014") {$SqlSp = "_SP3"}
-            If ($SqlVersion -eq "2016") {$SqlSp = "_SP2"}
+            If ($Core -and $OsVersion -ne 2016 -and $SqlVersion ) { Write-Warning "SQL only avaialable on Core Editions of Windows Server 2016, Switching to Full"; $Core = $False }
+            If ($Containers) { Write-Warning "SQL AMI not available with Containers, Switching to Non-Containers"; $Containers = $False }
+            If ($SqlVersion -eq "2012") { $SqlSp = "_SP4" }
+            If ($SqlVersion -eq "2014") { $SqlSp = "_SP3" }
+            If ($SqlVersion -eq "2016") { $SqlSp = "_SP2" }
             $SqlVersion = $SqlVersion.ToUpper()
-            $SqlEdition = $SqlEdition.Substring(0,1).ToUpper() + $SqlEdition.Substring(1).ToLower()
-            $SqlText = "SQL_"+$SqlVersion+$SqlSp+"_"+$SqlEdition 
-            if ($OsVersion -notmatch '201(6|9)'     -and $SqlVersion -match '201(7|9)')   {
+            $SqlEdition = $SqlEdition.Substring(0, 1).ToUpper() + $SqlEdition.Substring(1).ToLower()
+            $SqlText = "SQL_" + $SqlVersion + $SqlSp + "_" + $SqlEdition 
+            if ($OsVersion -notmatch '201(6|9)' -and $SqlVersion -match '201(7|9)') {
                 Write-Warning "SQL Server $SqlVersion only supported on Windows Server 2016 and 2019, switching to Windows $($LatestStable[1])"
                 $OSVersion = $($LatestStable[1])
             }
-            if ($OsVersion -notmatch '201(2R2|6|9)' -and $SqlVersion -eq "2016")   {
+            if ($OsVersion -notmatch '201(2R2|6|9)' -and $SqlVersion -eq "2016") {
                 Write-Warning "SQL Server 2016 only supported on Windows Server 2012 R2, 2016 and 2019, switching to Windows $($LatestStable[1])"
                 $OSVersion = $($LatestStable[1])
             }
-            if ($OsVersion -notmatch '2012'         -and $SqlVersion -eq "2014")   {
+            if ($OsVersion -notmatch '2012' -and $SqlVersion -eq "2014") {
                 Write-Warning "SQL Server 2014 only supported on Windows Server 2012 or 2012 R2, switching to Windows 2012 R2"
                 $OSVersion = "2012R2"
             }
-            if ($OsVersion -ne '2012'  -and $SqlVersion -eq '2012')   {
+            if ($OsVersion -ne '2012' -and $SqlVersion -eq '2012') {
                 Write-Warning "SQL Server 2012 only supported on Windows Server 2012, switching to Windows 2012"
                 $OSVersion = "2012"
             }
         }
-        $OSVersion             = $OSVersion.ToUpper()
-        $Language              = $Language.Substring(0,1).ToUpper() + $Language.Substring(1).ToLower()
+        $OSVersion = $OSVersion.ToUpper()
+        $Language = $Language.Substring(0, 1).ToUpper() + $Language.Substring(1).ToLower()
     
         $BaseText = "/aws/service/ami-windows-latest/Windows_Server-"
 
-        if ($OsVersion -match '190(3|9)|2004')     
-        {
-            $SearchString = $BaseText+$OsVersion+"-"+$Language+"-Core"
-            if ($Base) {$SearchString = $SearchString+"-Base"}
-            else       {$SearchString = $SearchString+"-ContainersLatest"}
+        if ($OsVersion -match '190(3|9)|2004') {
+            $SearchString = $BaseText + $OsVersion + "-" + $Language + "-Core"
+            if ($Base) { $SearchString = $SearchString + "-Base" }
+            else { $SearchString = $SearchString + "-ContainersLatest" }
         }
-        if ($OsVersion -match '201(6|9)')     
-        {
-            if ($Core) {$SearchString = $BaseText+$OsVersion+"-"+$Language+"-Core"}
-            else       {$SearchString = $BaseText+$OsVersion+"-"+$Language+"-Full"}
-            if ($Base) {$SearchString = $SearchString+"-Base"}
+        if ($OsVersion -match '201(6|9)') {
+            if ($Core) { $SearchString = $BaseText + $OsVersion + "-" + $Language + "-Core" }
+            else { $SearchString = $BaseText + $OsVersion + "-" + $Language + "-Full" }
+            if ($Base) { $SearchString = $SearchString + "-Base" }
             elseif ($Containers) {
-                if ($OsVersion -eq '2016'){$SearchString = $SearchString+"-Containers"}
-                if ($OsVersion -eq '2019'){$SearchString = $SearchString+"-ContainersLatest"}
+                if ($OsVersion -eq '2016') { $SearchString = $SearchString + "-Containers" }
+                if ($OsVersion -eq '2019') { $SearchString = $SearchString + "-ContainersLatest" }
             }
-            else       {$SearchString = $SearchString+"-"+$SqlText}
+            else { $SearchString = $SearchString + "-" + $SqlText }
         }
-        if ($OsVersion -eq "2012R2")   
-        {
-            if ($Base) 
-            {
-                if     ($Core) {$SearchString = $BaseText+"2012-R2_RTM-"+$Language+"-64Bit-Core"}
-                else           {$SearchString = $BaseText+"2012-R2_RTM-"+$Language+"-64Bit-Base"}
+        if ($OsVersion -eq "2012R2") {
+            if ($Base) {
+                if ($Core) { $SearchString = $BaseText + "2012-R2_RTM-" + $Language + "-64Bit-Core" }
+                else { $SearchString = $BaseText + "2012-R2_RTM-" + $Language + "-64Bit-Base" }
             }
            
-            else {$SearchString = $BaseText+"2012-R2_RTM-"+$Language+"-64Bit-"+$SqlText}
+            else { $SearchString = $BaseText + "2012-R2_RTM-" + $Language + "-64Bit-" + $SqlText }
         }
 
-        if ($OsVersion -eq "2012")     
-        {
-            if ($Base) {$SearchString = $BaseText+"2012-RTM-"+$Language+"-64Bit-Base"}
-            else       {$SearchString = $BaseText+"2012-RTM-"+$Language+"-64Bit-"+$SqlText}
+        if ($OsVersion -eq "2012") {
+            if ($Base) { $SearchString = $BaseText + "2012-RTM-" + $Language + "-64Bit-Base" }
+            else { $SearchString = $BaseText + "2012-RTM-" + $Language + "-64Bit-" + $SqlText }
         }
     }
-    If ($OsVersion -like "Ubuntu*"){
-        $FilterParam = @{Filter = @{Name="name";Values="ubuntu/images/hvm-ssd/ubuntu-bionic-$($OsVersion.TrimStart("Ubuntu"))-amd64-server*"} }
-        if ($Region) {$FilterParam.Add('Region', $Region) }
+    If ($OsVersion -like "Ubuntu*") {
+        $FilterParam = @{Filter = @{Name = "name"; Values = "ubuntu/images/hvm-ssd/ubuntu-bionic-$($OsVersion.TrimStart("Ubuntu"))-amd64-server*" } }
+        if ($Region) { $FilterParam.Add('Region', $Region) }
         $Images = Get-Ec2Image @FilterParam
     }
-    If ("AmazonLinux2","AL2" -contains $OsVersion){
+    If ("AmazonLinux2", "AL2" -contains $OsVersion) {
         $SearchString = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
     }
-    If ("AmazonLinux", "AL1", "AL" -contains $OsVersion){
-        $SearchString ="/aws/service/ami-amazon-linux-latest/amzn-ami-hvm-x86_64-gp2"
+    If ("AmazonLinux", "AL1", "AL" -contains $OsVersion) {
+        $SearchString = "/aws/service/ami-amazon-linux-latest/amzn-ami-hvm-x86_64-gp2"
     }
-    If ("AmazonLinux2NetCore", "AL2NetCore" -contains $OsVersion){
-        $FilterParam = @{Filter = @{ Name="name"; Values="amzn2-ami-hvm*x86_64-gp2-dotnetcore*" } }
-        if ($Region) {$FilterParam.Add('Region', $Region) }
+    If ("AmazonLinux2NetCore", "AL2NetCore" -contains $OsVersion) {
+        $FilterParam = @{Filter = @{ Name = "name"; Values = "amzn2-ami-hvm*x86_64-gp2-dotnetcore*" } }
+        if ($Region) { $FilterParam.Add('Region', $Region) }
         $Images = Get-Ec2Image @FilterParam
     }
-    If ($OsVersion -eq "UbuntuNetCore"){
-        $FilterParam = @{Filter = @{ Name="name"; Values="ubuntu*amd64*dotnetcore*" }}
-        if ($Region) {$FilterParam.Add('Region', $Region) }
+    If ($OsVersion -eq "UbuntuNetCore") {
+        $FilterParam = @{Filter = @{ Name = "name"; Values = "ubuntu*amd64*dotnetcore*" } }
+        if ($Region) { $FilterParam.Add('Region', $Region) }
         $Images = Get-Ec2Image @FilterParam
     }
-    If ($OsVersion -eq "EcsAmazonLinux"){
+    If ($OsVersion -eq "EcsAmazonLinux") {
         $SearchString = "/aws/service/ecs/optimized-ami/amazon-linux/recommended/image_id"
     }
-    If ($OsVersion -eq "EcsAmazonLinux2"){
+    If ($OsVersion -eq "EcsAmazonLinux2") {
         $SearchString = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
     }
-    If ($OsVersion -eq "EcsWindowsServer2019"){
-        $ImageId = (Get-SSMParameter -Name /aws/service/ami-windows-latest/Windows_Server-2019-English-Full-ECS_Optimized | Select -ExpandProperty "Value" | ConvertFrom-Json).image_id
+    If ($OsVersion -eq "EcsWindowsServer2019") {
+        $ImageId = (Get-SSMParameter -Name /aws/service/ami-windows-latest/Windows_Server-2019-English-Full-ECS_Optimized | Select-Object -ExpandProperty "Value" | ConvertFrom-Json).image_id
     }
-    If ($OsVersion -eq "EcsWindowsServer2016"){
+    If ($OsVersion -eq "EcsWindowsServer2016") {
         $SearchString = "/aws/service/ami-windows-latest/Windows_Server-2016-English-Full-ECS_Optimized/image_id"
     }
     
-    If ($SearchString){
-        $SSMParameters = @{Name = $SearchString}
-        if ($Region) {$SSMParameters.Add('Region', $Region) }
+    If ($SearchString) {
+        $SSMParameters = @{Name = $SearchString }
+        if ($Region) { $SSMParameters.Add('Region', $Region) }
         Try { 
             $ImageId = (Get-SSMParameter @SSMParameters).Value
-        } Catch { 
+        }
+        Catch { 
             Write-Error "AMI Not Found" 
         }
     }
-    If ($ImageIdOnly){
-        If ($Images){
-            ($Images | where Name -NotMatch "beanstalk" | Sort Name | Select -Last 1).ImageId
+    If ($ImageIdOnly) {
+        If ($Images) {
+            ($Images | Where-Object Name -NotMatch "beanstalk" | Sort-Object Name | Select-Object -Last 1).ImageId
         }
         If ($ImageId) { 
             $ImageId
         }
-    } else {
-        If ($Images){
-            $Images | where Name -NotMatch "beanstalk" | Sort Name | Select -Last 1 
+    }
+    else {
+        If ($Images) {
+            $Images | Where-Object Name -NotMatch "beanstalk" | Sort-Object Name | Select-Object -Last 1 
         }
         If ($ImageId) {
-            $ImageParams = @{ImageId = $ImageId}
-            if ($Region) {$ImageParams.Add('Region', $Region) }
+            $ImageParams = @{ImageId = $ImageId }
+            if ($Region) { $ImageParams.Add('Region', $Region) }
             Get-EC2Image @ImageParams
         }
     }

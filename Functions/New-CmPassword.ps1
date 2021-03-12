@@ -1,4 +1,4 @@
-﻿Function New-CmPassword              {
+﻿Function New-CmPassword {
     <#
     .Synopsis
        Generates random passwords
@@ -33,14 +33,13 @@
         #Doesn't output the password as text but rather only copies it to Clipboard
         [Switch]   $ClipOnly,
         #Specifies the length of the password. This parameter is ignored when you use the -Easy switch
-        [Parameter(Position=0)]
+        [Parameter(Position = 0)]
         [int]      $Length = 12,
         #Specifies the ammount of passwords to generate, only the last one will be left in the clipboard
         [int]      $Count = 1
     )
-    for ($c = 0 ; $c -lt $Count ; $c++){
-        if ($easy -Eq $true) 
-        {
+    for ($c = 0 ; $c -lt $Count ; $c++) {
+        if ($easy -Eq $true) {
             $digits = 48..57
             $UpperConsonants = 66..68 + 70..72 + 74..78 + 80..84 + 86..90
             $LowerConsonants = 98..100 + 102..104 + 106..110 + 112..116 + 118..122
@@ -51,25 +50,22 @@
             $third = [char](get-random -count 1 -InputObject $LowerConsonants)
             $fourth = [char](get-random -count 1 -InputObject $LowerVowels)
             $numbers = $null
-            for ($i=0 ; $i -lt 4; $i++)
-            {
+            for ($i = 0 ; $i -lt 4; $i++) {
                 $numbers += [char](get-random -count 1 -InputObject $digits)
             }
             $password = ($first + $second + $third + $fourth + $numbers)
         }
-        Else
-        {
+        Else {
             $digits = 48..57
             $letters = 65..90 + 97..122
             $specialchar = 33..47 + 58..64 + 91..96 + 123..126
             $password = $null
-            for ($i = 0 ; $i -lt $Length ; $i++)
-            {
-                If ($Specials -eq $true) {$password += [char](get-random -count 1 -InputObject ($digits + $letters + $specialchar))}
-                Else {$password += [char](get-random -count 1 -InputObject ($digits + $letters))}
+            for ($i = 0 ; $i -lt $Length ; $i++) {
+                If ($Specials -eq $true) { $password += [char](get-random -count 1 -InputObject ($digits + $letters + $specialchar)) }
+                Else { $password += [char](get-random -count 1 -InputObject ($digits + $letters)) }
             }
         }
         $password | Set-Clipboard
-        If(!$ClipOnly) {$password}
+        If (!$ClipOnly) { $password }
     }
 }

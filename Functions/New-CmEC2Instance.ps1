@@ -201,10 +201,6 @@
             if ($InstanceType -like "t*.*" -and $SqlEdition -ne "Express") {Write-Error "Non Express editions of SQL Server are not permited to run on T2/T3 instance types"}
         }
         
-        Write-Verbose          "Geting On Demand Instance Pricing"
-        Try {$OndemandPrice       = Get-EC2WindowsOndemandPrice -InstanceType $InstanceType -Region $Region}
-        Catch {}
-        
         if (!$ImageID) {
             Write-Verbose       "Getting Current AMI for Selected OS"
             $ImageParam      = @{OsVersion = $OsVersion}
@@ -231,13 +227,13 @@
             If (!$VpcId)   
             {
                 Write-Verbose   "Getting default VPC"
-                $VpcId  = (Get-EC2Vpc -Region $Region| Where {$_.IsDefault -eq $true}).VpcId
+                $VpcId  = (Get-EC2Vpc -Region $Region| Where-Object {$_.IsDefault -eq $true}).VpcId
             }
             If (!$VpcId)   { Write-Error "Could not find default VPC in region $Region, Please specify either a VPC or a Subnet Id" }
             Write-Verbose       "Getting Subnet for name $AvailabilityZone"
             $SubNets = Get-EC2Subnet -Region $Region -Filter @{Name='vpc-id';Values=$VpcId}
-            If ($AvailabilityZone) {$SubNetId = ( $SubNets | where {$_.AvailabilityZone -eq $AvailabilityZone})[0].SubnetId}
-            else {$SubNetId = ($SubNets | where {$_.VpcId -eq $VPCid})[(Get-Random -Maximum $($SubNets.Count-1))].SubnetId}
+            If ($AvailabilityZone) {$SubNetId = ( $SubNets | Where-Object {$_.AvailabilityZone -eq $AvailabilityZone})[0].SubnetId}
+            else {$SubNetId = ($SubNets | Where-Object {$_.VpcId -eq $VPCid})[(Get-Random -Maximum $($SubNets.Count-1))].SubnetId}
         } Else {
             $VpcId = (Get-EC2Subnet -Region $Region -SubnetId $SubNetId).VpcId
         }
@@ -245,17 +241,17 @@
     
         If ($SecurityGroupName)  {
             Write-Verbose       "finding Security Group named $SecurityGroupName"
-            $SecurityGroupId   = (Get-EC2SecurityGroup -Region $Region | where {$_.GroupName -eq $SecurityGroupName -and $_.VpcId -eq $VpcId})[0].GroupId
+            $SecurityGroupId   = (Get-EC2SecurityGroup -Region $Region | Where-Object {$_.GroupName -eq $SecurityGroupName -and $_.VpcId -eq $VpcId})[0].GroupId
             If (!$SecurityGroupId) {Write-Warning "Security Group with $SecurityGroupName cannot be found, using default"}
         } 
         if (!$SecurityGroupId) {
             Write-Verbose       "Getting default Security Group for VPC $VpcId"
-            $SecurityGroupId   = (Get-EC2SecurityGroup -Region $Region | where {$_.GroupName -eq "default" -and $_.VpcId -eq $VPCId})[0].GroupId
+            $SecurityGroupId   = (Get-EC2SecurityGroup -Region $Region | Where-Object {$_.GroupName -eq "default" -and $_.VpcId -eq $VPCId})[0].GroupId
             If (!$SecurityGroupId) {Write-Error "No Default security group found in $VpcId"}
         }
         If ($RootVolumeSize){
             $BDMs = $Image.BlockDeviceMappings
-            ($BDMs | Where {$_.DeviceName -eq $Image.RootDeviceName}).EBS.VolumeSize = $RootVolumeSize
+            ($BDMs | Where-Object {$_.DeviceName -eq $Image.RootDeviceName}).EBS.VolumeSize = $RootVolumeSize
         }
         If ($SecondaryVolumeSize){
             If (!$BDMs) {$BDMs = $Image.BlockDeviceMappings}
@@ -306,7 +302,7 @@
             
             If ($UserData64)      {$Params.Add("UserData",$UserData64)}
             If ($InstanceProfile) {$Params.Add("InstanceProfile_Name",$InstanceProfile)}
-            If ($BDMs) {$Params.Add("BlockDeviceMapping",$BDMs)}
+            If ($BDMs)            {$Params.Add("BlockDeviceMapping",$BDMs)}
             
             $InstanceId       = (New-EC2Instance @Params).Instances.InstanceId
                     

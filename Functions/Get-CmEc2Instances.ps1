@@ -1,21 +1,20 @@
-﻿Function Get-CmEc2Instances          {
+﻿Function Get-CmEc2Instances {
     [Cmdletbinding()]
     Param (
         [string[]]$Region
     )
     $ErrorActionPreference = "Stop"
-    $AllRegions  = (Get-AWSRegion).Region
-    $AllRegions += "af-south-1"
-    If (!$Region){
+    $AllRegions = (Get-AWSRegion).Region
+    If (!$Region) {
         $Region = $AllRegions
         Write-Warning "Getting instances for all regions, May take some time"
     } 
     Foreach ($Reg in $Region) {
-        If ($AllRegions -notcontains $Reg) {Write-Error "$Region is not a valid AWS Region, Valid regions are $AllRegions"}
+        If ($AllRegions -notcontains $Reg) { Write-Error "$Region is not a valid AWS Region, Valid regions are $AllRegions" }
         $Instances = (Get-EC2Instance -Region $Reg).Instances
         Foreach ($Instance in $Instances) {  
-            $Properties    = @{
-                Name            = $Instance.Tags | Where-Object {$_.Key -eq "Name"} | Select -ExpandProperty Value
+            $Properties = @{
+                Name            = $Instance.Tags | Where-Object { $_.Key -eq "Name" } | Select-Object -ExpandProperty Value
                 State           = $Instance.State.Name
                 InstanceType    = $Instance.InstanceType
                 InstanceId      = $Instance.InstanceId

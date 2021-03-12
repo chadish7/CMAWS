@@ -5,11 +5,11 @@
             ValueFromPipeline=$true,
             ValueFromPipelineByPropertyName=$true
         )]
-        [string[]]  $InstanceId,
+            [string[]]  $InstanceId,
         [Parameter(Mandatory=$true)]
-        [string]    $DomainName,
-        [string]    $Region,
-        [string]    $InstanceName
+            [string]    $DomainName,
+            [string]    $Region,
+            [string]    $InstanceName
     )
     BEGIN 
     {
