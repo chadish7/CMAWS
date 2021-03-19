@@ -129,7 +129,7 @@ An remote desktop session to server01 will be created using the credentials of c
             [string]       $User,
         [Parameter(ParameterSetName='UserPassword',Mandatory=$true,Position=2)]
         [Alias('P')] 
-            [string]       $Password,
+            [string]       $Pass,
         [Parameter(ParameterSetName='Credential',Mandatory=$true,Position=1)]
         [Alias('C')]
             [PSCredential] $Credential,
@@ -161,8 +161,8 @@ An remote desktop session to server01 will be created using the credentials of c
         }
 
         if ($Credential) {
-            $User     = $Credential.UserName
-            $Password = $Credential.GetNetworkCredential().Password
+            $User  = $Credential.UserName
+            $Pass  = $Credential.GetNetworkCredential().Password
         }
     }
     process {
@@ -178,7 +178,7 @@ An remote desktop session to server01 will be created using the credentials of c
             }
 
             $ProcessInfo.FileName    = "$($env:SystemRoot)\system32\cmdkey.exe"
-            $ProcessInfo.Arguments   = "/generic:TERMSRV/$ComputerCmdkey /user:$User /pass:$($Password)"
+            $ProcessInfo.Arguments   = "/generic:TERMSRV/$ComputerCmdkey /user:$User /pass:$($Pass)"
             $ProcessInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
             $Process.StartInfo       = $ProcessInfo
             if ($PSCmdlet.ShouldProcess($ComputerCmdkey,'Adding credentials to store')) {
