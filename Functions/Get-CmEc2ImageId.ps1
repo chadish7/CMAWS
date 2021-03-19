@@ -205,9 +205,9 @@ Function Get-CmEc2ImageId {
         $SearchString = "/aws/service/ami-amazon-linux-latest/amzn-ami-hvm-x86_64-gp2"
     }
     If ("AmazonLinux2NetCore", "AL2NetCore" -contains $OsVersion) {
-        $FilterParam = @{Filter = @{ Name = "name"; Values = "amzn2-ami-hvm*x86_64-gp2-dotnetcore*" } }
+        $FilterParam = @{Filter = @{ Name = "name"; Values = "amzn2-x86_64-*DOTNET*" } }
         if ($Region) { $FilterParam.Add('Region', $Region) }
-        $Images = Get-Ec2Image @FilterParam
+        $Images = Get-Ec2Image @FilterParam 
     }
     If ($OsVersion -eq "UbuntuNetCore") {
         $FilterParam = @{Filter = @{ Name = "name"; Values = "ubuntu*amd64*dotnetcore*" } }
