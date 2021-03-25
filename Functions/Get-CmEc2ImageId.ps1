@@ -46,7 +46,9 @@ Function Get-CmEc2ImageId {
     Param(
         [Parameter(Position = 0)]
         #[ValidatePattern('(WindowsServer)?(180(3|9)|1709|20(03|(08|12)(R2)?|16|19))|Ubuntu1(6|8)\.04|AmazonLinux2?')]
-        [ValidateSet( 
+        [ValidateSet(
+            "WindowsServer21H1", 
+            "WindowsServer20H2", 
             "WindowsServer2004", 
             "WindowsServer1909", 
             "WindowsServer1903", 
@@ -54,6 +56,8 @@ Function Get-CmEc2ImageId {
             "WindowsServer2016",
             "WindowsServer2012R2",
             "WindowsServer2012",
+            "21H1",
+            "20H2",
             "2004",
             "1909",
             "1903",
@@ -76,7 +80,7 @@ Function Get-CmEc2ImageId {
             "EcswindowsServer2016",
             "EcswindowsServer2019"
         )]
-        [string] $OsVersion = "2016",
+        [string] $OsVersion = "2019",
         [ValidateSet("2019", "2017", "2016", "2014", "2012")]
         [string] $SqlVersion,
 
@@ -112,22 +116,23 @@ Function Get-CmEc2ImageId {
         [switch] $ImageIdOnly
     )
     $ErrorActionPreference = "Stop"
-    # if(!$Region){$Region = (Get-DefaultAWSRegion).Region}
-    
+
+    if ($ShowValidOS) {return $SupportedOSs}
+
     If ($OsVersion -like "WindowsServer*") {
         $OsVersion = $OsVersion.Substring(13)
     } 
-    If ($OsVersion -match '(190(3|9)|20((04)|(12)(R2)?|16|19))') {
+    If ($OsVersion -match '(190(3|9)|20(12(R2)?|1(6|9)|04|H2))|21H(1|2)') {
         $Base = $True
-        $LatestStable = "1909", "2019"
+        $LatestStable = "20H2", "2019"
         if ($OsVersion -match '(190(3|9)|2004)') { $Core = $True }
-        if ($Core -and $OsVersion -notmatch '190(3|9)|20(04|12(R2)?|16|19)') {
+        if ($Core -and $OsVersion -notmatch '190(3|9)|20(04|12(R2)?|1(6|9)|H2)|21H(1|2)') {
             Write-Warning "Core AMIs only available for Windows Server 2012R2 and later, Switching to Windows Server $($LatestStable[0])"
             $OsVersion = $LatestStable[0]
         }
         if ($Containers) {
             $Base = $False
-            if ($OsVersion -notmatch '190(3|9)|20(04|16|19)') {
+            if ($OsVersion -notmatch '190(3|9)|20(04|16|19|H2)|21H(1|2)') {
                 Write-Warning "Container AMIs only available for Windows Server 2016 and later, Switching to Windows Server $($LatestStable[1])"
                 $OsVersion = $LatestStable[1]
             }
@@ -164,7 +169,7 @@ Function Get-CmEc2ImageId {
     
         $BaseText = "/aws/service/ami-windows-latest/Windows_Server-"
 
-        if ($OsVersion -match '190(3|9)|2004') {
+        if ($OsVersion -match '190(3|9)|20(04|H2)') {
             $SearchString = $BaseText + $OsVersion + "-" + $Language + "-Core"
             if ($Base) { $SearchString = $SearchString + "-Base" }
             else { $SearchString = $SearchString + "-ContainersLatest" }

@@ -102,6 +102,8 @@
         [string] $DomainName,
         # Version of Windows e.g. 2012R2 or 2016. Default is 2016
         [ValidateSet(
+            "WindowsServer21H1", 
+            "WindowsServer20H2", 
             "WindowsServer2004", 
             "WindowsServer1909", 
             "WindowsServer1903", 
@@ -109,6 +111,8 @@
             "WindowsServer2016",
             "WindowsServer2012R2",
             "WindowsServer2012",
+            "21H1",
+            "20H2",
             "2004",
             "1909",
             "1903",
@@ -120,12 +124,18 @@
             "Ubuntu18.04",
             "AmazonLinux",
             "AmazonLinux2",
+            "AL2",
+            "AL1",
+            "AL",
             "AmazonLinux2NetCore",
+            "AL2NetCore",
             "UbuntuNetCore",
             "EcsAmazonLinux",
-            "EcsAmazonLinux2"
+            "EcsAmazonLinux2",
+            "EcswindowsServer2016",
+            "EcswindowsServer2019"
         )]
-        [string] $OsVersion = "2016",
+        [string] $OsVersion = "2019",
 
         [Parameter(ParameterSetName='SearchSqlIds')]
         [ValidateSet("2017","2016","2014","2012")]
