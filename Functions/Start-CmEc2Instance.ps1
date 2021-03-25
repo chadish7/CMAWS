@@ -9,18 +9,12 @@
         )]
         [string[]]  $InstanceId,
         [string]    $DomainName,
+        [ValidateScript( { @((Get-AWSRegion).Region) })]
         [string]    $Region
     )
     BEGIN 
     {
         $ErrorActionPreference      = "Stop"
-        If ($Region){
-            $AllRegions = (Get-AWSRegion).Region
-            $AllRegions += "af-south-1"
-            If ($AllRegions -notcontains $Region) { 
-                Write-Error "$Region is not a valid AWS Region, Valid regions are $AllRegions"
-            }
-        }
     }
     PROCESS 
     {

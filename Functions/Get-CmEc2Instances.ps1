@@ -1,6 +1,7 @@
 ﻿Function Get-CmEc2Instances {
     [Cmdletbinding()]
     Param (
+        [ValidateScript( { @((Get-AWSRegion).Region) })]
         [string[]]$Regions
     )
     $ErrorActionPreference = "Stop"

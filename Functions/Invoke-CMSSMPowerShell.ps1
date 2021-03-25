@@ -60,6 +60,7 @@
             ValueFromPipeline              =$true,
             ValueFromPipelineByPropertyName=$true)]
         [string[]]    $InstanceId,
+        [ValidateScript( { @((Get-AWSRegion).Region) })]
         [string]      $Region,
         [Parameter(Mandatory               =$true)]
         [ScriptBlock] $Command,
@@ -67,12 +68,6 @@
     )
     BEGIN {
         $ErrorActionPreference      = "Stop"
-        If ($Region){
-            $AllRegions    = (Get-AWSRegion).Region
-            If ($AllRegions -notcontains $Region) {
-                Write-Error "$Region is not a valid AWS Region, Valid regions are $AllRegions"
-            }
-        }
     }
     PROCESS {
         foreach ($Instance in $InstanceId){

@@ -14,5 +14,5 @@
     $RegionPrices          = $PricingObject | where {$_.region -eq $Region}
     $RegionPrices.instancetypes.sizes.size
     #>
-    Import-Csv $PSScriptRoot\..\EC2Instances.csv | Select -ExpandProperty "API Name"
+    Import-Csv $PSScriptRoot\..\EC2Instances.csv | Select-Object -ExpandProperty "API Name"
 }
