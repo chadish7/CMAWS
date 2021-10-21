@@ -61,7 +61,8 @@
         [Parameter(Mandatory=$True)]
         [String]   $Value,
         [Int]      $TTL = 300,
-        [String]   $Comment
+        [String]   $Comment,
+        [String]   $ProfileName
     )
 
     if ($Domain.Substring($Domain.Length-1) -ne ".") {$Domain = $Domain + "."}
@@ -75,8 +76,9 @@
     $Change.ResourceRecordSet.Type   = $Type
     $Change.ResourceRecordSet.TTL    = $TTL
     $Change.ResourceRecordSet.ResourceRecords.Add(@{Value=if ($Type -eq "TXT") {"""$Value"""} else {$Value}})
-
-    $HostedZone = @(Get-R53HostedZones | Where-Object {$_.Name -eq $Domain})
+    $HZ_Params = @{}
+    if ($ProfileName) {$HZ_Params['ProfileName'] = $ProfileName}
+    $HostedZone = @(Get-R53HostedZones @$HZ_Params| Where-Object {$_.Name -eq $Domain})
     If (!$HostedZone) {Write-Error "No Route 53 Hosted Zone found for $Domain"}
     If ($HostedZone.Count -gt 1) {Write-Warning "More than 1 Hosted Zone found, using $($HostedZone[0].Id)"}
 
@@ -85,5 +87,6 @@
         ChangeBatch_Change  = $Change 
         ChangeBatch_Comment = $Comment
     }
+    if ($ProfileName) {$Parameters['ProfileName'] = $ProfileName}
     Edit-R53ResourceRecordSet @Parameters
 }
