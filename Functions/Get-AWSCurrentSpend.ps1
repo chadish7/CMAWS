@@ -1,4 +1,11 @@
 Function Get-AWSCurrentSpend {
+    param (
+        # The AWS CLI or PowerShell tools profile to use for Authentications
+        [String] $ProfileName
+    
+    )
+    $Param = @{}
+    If ($ProfileName)   {$Param['ProfileName'] = $ProfileName}
     $CurrentPeriod = @{
         Start = Get-Date -UFormat "%Y-%m-%d" -Day 1 
         End   = Get-Date -UFormat "%Y-%m-%d"
@@ -13,12 +20,12 @@ Function Get-AWSCurrentSpend {
     }
     $Output = @{
         Date           = $CurrentPeriod.End
-        LastMonthSpend = [Math]::Round((Get-CECostAndUsage -TimePeriod $LastMonth     -Granularity Monthly -Metric UNBLENDED_COST).ResultsByTime.Total.Values.Amount,2)
-        Spend          = [Math]::Round((Get-CECostAndUsage -TimePeriod $CurrentPeriod -Granularity Monthly -Metric UNBLENDED_COST).ResultsByTime.Total.Values.Amount,2)
+        LastMonthSpend = [Math]::Round((Get-CECostAndUsage @Param -TimePeriod $LastMonth     -Granularity Monthly -Metric UNBLENDED_COST).ResultsByTime.Total.Values.Amount,2)
+        Spend          = [Math]::Round((Get-CECostAndUsage @Param -TimePeriod $CurrentPeriod -Granularity Monthly -Metric UNBLENDED_COST).ResultsByTime.Total.Values.Amount,2)
     }
     Try { 
         $Forecast = [Math]::Round(
-            (Get-CECostForecast -TimePeriod $FCPeriod -Granularity Monthly -Metric UNBLENDED_COST).Total.Amount,
+            (Get-CECostForecast @Param -TimePeriod $FCPeriod -Granularity Monthly -Metric UNBLENDED_COST).Total.Amount,
             2
         )
         
