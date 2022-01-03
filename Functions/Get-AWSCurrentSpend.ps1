@@ -11,12 +11,12 @@ Function Get-AWSCurrentSpend {
         End   = Get-Date -UFormat "%Y-%m-%d"
     }
     $LastMonth = @{
-        Start = Get-Date -UFormat "%Y-%m-%d" -Day 1 -Month (Get-Date).AddMonths(-1).Month
+        Start = (Get-Date -Day 1).AddMonths(-1) | Get-Date -UFormat "%Y-%m-%d"
         End   = Get-Date -UFormat "%Y-%m-%d" -Day 1
     }
     $FCPeriod = @{
-        Start = Get-Date -Day (Get-Date).AddDays(1).Day -UFormat "%Y-%m-%d"
-        End   = Get-Date -Day (Get-Date -Month (Get-Date).AddMonths(1).Month -Day 1).AddDays(-1).Day -UFormat "%Y-%m-%d"
+        Start = (Get-Date).AddDays(1) | Get-Date -UFormat "%Y-%m-%d"
+        End   = (Get-Date -Day 1 -Month (Get-Date).AddMonths(1).Month).AddDays(-1) | Get-Date -UFormat "%Y-%m-%d"
     }
     $Output = @{
         Date           = $CurrentPeriod.End
