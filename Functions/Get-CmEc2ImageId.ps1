@@ -47,26 +47,27 @@ Function Get-CmEc2ImageId {
         [Parameter(Position = 0)]
         #[ValidatePattern('(WindowsServer)?(180(3|9)|1709|20(03|(08|12)(R2)?|16|19))|Ubuntu1(6|8)\.04|AmazonLinux2?')]
         [ValidateSet(
+            # "WindowsServer22H2", 
+            # "WindowsServer22H1", 
+            "WindowsServer21H2", 
             "WindowsServer21H1", 
             "WindowsServer20H2", 
-            "WindowsServer2004", 
-            "WindowsServer1909", 
-            "WindowsServer1903", 
+            "WindowsServer2022",
             "WindowsServer2019",
             "WindowsServer2016",
             "WindowsServer2012R2",
-            "WindowsServer2012",
+            # "22H2",
+            # "22H1",
+            "21H2",
             "21H1",
             "20H2",
-            "2004",
-            "1909",
-            "1903",
+            "2022",
             "2019",
             "2016",
             "2012R2",
-            "2012",
             "Ubuntu16.04",
             "Ubuntu18.04",
+            "Ubuntu20.04",
             "AmazonLinux",
             "AmazonLinux2",
             "AL2",
@@ -122,17 +123,13 @@ Function Get-CmEc2ImageId {
     If ($OsVersion -like "WindowsServer*") {
         $OsVersion = $OsVersion.Substring(13)
     } 
-    If ($OsVersion -match '(190(3|9)|20(12(R2)?|1(6|9)|04|H2))|21H(1|2)') {
+    If ($OsVersion -match '(20(1(2R2|6|9))|22)|2(0|1|2)H(1|2)') {
         $Base = $True
-        $LatestStable = "20H2", "2019"
-        if ($OsVersion -match '(190(3|9)|2004)') { $Core = $True }
-        if ($Core -and $OsVersion -notmatch '190(3|9)|20(04|12(R2)?|1(6|9)|H2)|21H(1|2)') {
-            Write-Warning "Core AMIs only available for Windows Server 2012R2 and later, Switching to Windows Server $($LatestStable[0])"
-            $OsVersion = $LatestStable[0]
-        }
+        $LatestStable = "21H2", "2019"
+        if ($OsVersion -match '2(0|1|2)H(1|2)') { $Core = $True }
         if ($Containers) {
             $Base = $False
-            if ($OsVersion -notmatch '190(3|9)|20(04|16|19|H2)|21H(1|2)') {
+            if ($OsVersion -match '2012R2') {
                 Write-Warning "Container AMIs only available for Windows Server 2016 and later, Switching to Windows Server $($LatestStable[1])"
                 $OsVersion = $LatestStable[1]
             }
@@ -159,22 +156,18 @@ Function Get-CmEc2ImageId {
                 Write-Warning "SQL Server 2014 only supported on Windows Server 2012 or 2012 R2, switching to Windows 2012 R2"
                 $OSVersion = "2012R2"
             }
-            if ($OsVersion -ne '2012' -and $SqlVersion -eq '2012') {
-                Write-Warning "SQL Server 2012 only supported on Windows Server 2012, switching to Windows 2012"
-                $OSVersion = "2012"
-            }
         }
         $OSVersion = $OSVersion.ToUpper()
         $Language = $Language.Substring(0, 1).ToUpper() + $Language.Substring(1).ToLower()
     
         $BaseText = "/aws/service/ami-windows-latest/Windows_Server-"
 
-        if ($OsVersion -match '190(3|9)|20(04|H2)') {
+        if ($OsVersion -match '2(0|1|2)H(1|2)') {
             $SearchString = $BaseText + $OsVersion + "-" + $Language + "-Core"
             if ($Base) { $SearchString = $SearchString + "-Base" }
             else { $SearchString = $SearchString + "-ContainersLatest" }
         }
-        if ($OsVersion -match '201(6|9)') {
+        if ($OsVersion -match '20(16|19|22)') {
             if ($Core) { $SearchString = $BaseText + $OsVersion + "-" + $Language + "-Core" }
             else { $SearchString = $BaseText + $OsVersion + "-" + $Language + "-Full" }
             if ($Base) { $SearchString = $SearchString + "-Base" }
@@ -189,13 +182,8 @@ Function Get-CmEc2ImageId {
                 if ($Core) { $SearchString = $BaseText + "2012-R2_RTM-" + $Language + "-64Bit-Core" }
                 else { $SearchString = $BaseText + "2012-R2_RTM-" + $Language + "-64Bit-Base" }
             }
-           
+            
             else { $SearchString = $BaseText + "2012-R2_RTM-" + $Language + "-64Bit-" + $SqlText }
-        }
-
-        if ($OsVersion -eq "2012") {
-            if ($Base) { $SearchString = $BaseText + "2012-RTM-" + $Language + "-64Bit-Base" }
-            else { $SearchString = $BaseText + "2012-RTM-" + $Language + "-64Bit-" + $SqlText }
         }
     }
     If ($OsVersion -like "Ubuntu*") {
