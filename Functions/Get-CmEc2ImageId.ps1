@@ -114,7 +114,9 @@ Function Get-CmEc2ImageId {
             "Turkish"
         )]
         [string] $Language = "English",
-        [switch] $ImageIdOnly
+        [switch] $ImageIdOnly,
+        # The AWS CLI/ SDK Credential Profile to use
+        [string] $ProfileName
     )
     $ErrorActionPreference = "Stop"
 
@@ -186,9 +188,11 @@ Function Get-CmEc2ImageId {
             else { $SearchString = $BaseText + "2012-R2_RTM-" + $Language + "-64Bit-" + $SqlText }
         }
     }
+    $FilterParam = @{}
+    if ($Region)      { $FilterParam.Add('Region',      $Region) }
+    if ($ProfileName) { $FilterParam.Add('ProfileName', $ProfileName) }
     If ($OsVersion -like "Ubuntu*") {
-        $FilterParam = @{Filter = @{Name = "name"; Values = "ubuntu/images/hvm-ssd/ubuntu-bionic-$($OsVersion.TrimStart("Ubuntu"))-amd64-server*" } }
-        if ($Region) { $FilterParam.Add('Region', $Region) }
+        $FilterParam.Filter = @{Name = "name"; Values = "ubuntu/images/hvm-ssd/ubuntu-bionic-$($OsVersion.TrimStart("Ubuntu"))-amd64-server*" }
         $Images = Get-Ec2Image @FilterParam
     }
     If ("AmazonLinux2", "AL2" -contains $OsVersion) {
@@ -198,13 +202,11 @@ Function Get-CmEc2ImageId {
         $SearchString = "/aws/service/ami-amazon-linux-latest/amzn-ami-hvm-x86_64-gp2"
     }
     If ("AmazonLinux2NetCore", "AL2NetCore" -contains $OsVersion) {
-        $FilterParam = @{Filter = @{ Name = "name"; Values = "amzn2-x86_64-*DOTNET*" } }
-        if ($Region) { $FilterParam.Add('Region', $Region) }
+        $FilterParam.Filter = @{ Name = "name"; Values = "amzn2-x86_64-*DOTNET*" } 
         $Images = Get-Ec2Image @FilterParam 
     }
     If ($OsVersion -eq "UbuntuNetCore") {
-        $FilterParam = @{Filter = @{ Name = "name"; Values = "ubuntu*amd64*dotnetcore*" } }
-        if ($Region) { $FilterParam.Add('Region', $Region) }
+        $FilterParam.Filter = @{ Name = "name"; Values = "ubuntu*amd64*dotnetcore*" } 
         $Images = Get-Ec2Image @FilterParam
     }
     If ($OsVersion -eq "EcsAmazonLinux") {
@@ -222,7 +224,8 @@ Function Get-CmEc2ImageId {
     
     If ($SearchString) {
         $SSMParameters = @{Name = $SearchString }
-        if ($Region) { $SSMParameters.Add('Region', $Region) }
+        if ($Region)      { $SSMParameters.Region      = $Region } 
+        if ($ProfileName) { $SSMParameters.ProfileName = $ProfileName }
         Try { 
             $ImageId = (Get-SSMParameter @SSMParameters).Value
         }
@@ -244,7 +247,8 @@ Function Get-CmEc2ImageId {
         }
         If ($ImageId) {
             $ImageParams = @{ImageId = $ImageId }
-            if ($Region) { $ImageParams.Add('Region', $Region) }
+            if ($Region)      { $ImageParams.Region      = $Region }
+            if ($ProfileName) { $ImageParams.ProfileName = $ProfileName }
             Get-EC2Image @ImageParams
         }
     }
