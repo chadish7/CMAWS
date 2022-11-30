@@ -10,7 +10,9 @@
         [string]    $DomainName,
         [ValidateScript( { @((Get-AWSRegion).Region) })]
         [string]    $Region,
+        [string]    $ProfileName,
         [string]    $InstanceName
+        
     )
     BEGIN 
     {
@@ -18,10 +20,11 @@
     }
     PROCESS 
     {
-        foreach ($Instance in $InstanceID)       
+        foreach ($Instance in $InstanceId)       
         {
-            $Parameters       = @{InstanceID  = $Instance}
-            If ($Region)        {$Parameters.add('Region',$Region)}
+            $Parameters       = @{InstanceId  = $Instance}
+            If ($Region)      { $Parameters.Region      = $Region }
+            If ($ProfileName) { $Parameters.ProfileName = $ProfileName }
             $RunningInstance  = (Get-EC2Instance @Parameters).Instances
             if (!$RunningInstance) {
                 Start-Sleep -Seconds 1
@@ -46,7 +49,7 @@
             }
             If ($InstanceName) {$HostName  = $InstanceName+"."+$DomainName}
             Else {
-                $InstanceName          = $RunningInstance.Tags | Where-Object {$_.Key -eq "Name"} | Select -ExpandProperty Value
+                $InstanceName  = ($RunningInstance.Tags | Where-Object {$_.Key -eq "Name"}).Value
             
                 If (!$InstanceName) {
                     Write-Error "No Name Tag on instance $Instance, can't apply DNS Name."
@@ -61,12 +64,11 @@
             } Else {
                 Set-R53Record -Domain $DomainName -Type A -Name $InstanceName -Value $RunningInstance.PrivateIpAddress -TTL 30 | Out-Null
             }
-            $ObjProperties = @{
-                InstanceID   = $Instance
+            [PSCustomObject]@{
+                InstanceId   = $Instance
                 HostName     = $HostName
                 CurrentState = $CurrentState
             }
-            New-Object -TypeName PsObject -Property $ObjProperties
         }
     }
     END{}

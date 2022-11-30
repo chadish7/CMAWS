@@ -60,8 +60,9 @@
             ValueFromPipeline              =$true,
             ValueFromPipelineByPropertyName=$true)]
         [string[]]    $InstanceId,
-        [ValidateScript( { @((Get-AWSRegion).Region) })]
+        [ValidateScript({ @((Get-AWSRegion).Region) })]
         [string]      $Region,
+        [string]      $ProfileName,
         [Parameter(Mandatory               =$true)]
         [ScriptBlock] $Command,
         [switch]      $NoWait
@@ -71,8 +72,9 @@
     }
     PROCESS {
         foreach ($Instance in $InstanceId){
-            $Parameters    = @{InstanceID  = $Instance}
-            if ($Region)     {$Parameters.add('Region',$Region)}
+            $Parameters    = @{InstanceId  = $Instance}
+            if ($Region)      { $Parameters.Region      = $Region }
+            if ($ProfileName) { $Parameters.ProfileName = $ProfileName }
             $SentCommand     = Send-SSMCommand @Parameters -DocumentName "AWS-RunPowerShellScript" -Parameter @{commands="$Command"}
             if (!$NoWait) {
                 While (!$false) {

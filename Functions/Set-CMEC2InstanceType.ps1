@@ -12,31 +12,31 @@
     Version:     1.0.0
 
 .EXAMPLE
-   C:\> Set-CMEC2InstanceType -InstanceID i-1234567890abcdef -InstanceType m4.large
-   
-   Shutting down Instance i-1234567890abcdef
-   ........
+    C:\> Set-CMEC2InstanceType -InstanceID i-1234567890abcdef -InstanceType m4.large
+    
+    Shutting down Instance i-1234567890abcdef
+    ........
 
-   InstanceID          Status              InstanceType
-   ----------          ------              ------------
-   i-1234567890abcdef  running             m4.large
+    InstanceID          Status              InstanceType
+    ----------          ------              ------------
+    i-1234567890abcdef  running             m4.large
 
-   In this example one instance was specified for changing running and was stopped, changed and started again.
-   
+    In this example one instance was specified for changing running and was stopped, changed and started again.
+    
 .EXAMPLE
-   C:\> (Get-EC2instances).instances | Where {$_.InstanceType -eq "t2.large"} | Set-CMEC2InstanceType -InstanceType m4.large
+    C:\> (Get-EC2instances).instances | Where {$_.InstanceType -eq "t2.large"} | Set-CMEC2InstanceType -InstanceType m4.large
 
-   Shutting down Instance i-1234567890fedcba
-   ........
+    Shutting down Instance i-1234567890fedcba
+    ........
 
-   InstanceID          Status              InstanceType
-   ----------          ------              ------------
-   i-1234567890fedcba  running             m4.large
-   i-1234567890abcdef  stopped             m4.large
+    InstanceID          Status              InstanceType
+    ----------          ------              ------------
+    i-1234567890fedcba  running             m4.large
+    i-1234567890abcdef  stopped             m4.large
 
-   In this example all the instances that were of instance type t2.large where changed to m4.large, of which there were two. However, one of the instances was in a stopped state and the other was running and they were both left in their respective states.
-  
-  #>    
+    In this example all the instances that were of instance type t2.large where changed to m4.large, of which there were two. However, one of the instances was in a stopped state and the other was running and they were both left in their respective states.
+    
+    #>    
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory                = $true,
@@ -47,7 +47,9 @@
         [Parameter(ValueFromPipeline        = $true,
             ValueFromPipelineByPropertyName = $true
         )]
+        [ValidateScript({@((Get-AWSRegion).Region)})]
         [string]   $Region,
+        [string]   $ProfileName,
         [Parameter(Mandatory=$true)]
         [ValidateScript({(Get-CmEc2InstanceTypes)})]
         [Alias("Type")] 
@@ -74,19 +76,13 @@
     {
         $InstanceType               = $PSBoundParameters.InstanceType
         $ErrorActionPreference      = "Stop"
-        If ($Region){
-            $AllRegions = (Get-AWSRegion).Region
-            $AllRegions += "af-south-1"
-            If ($AllRegions -notcontains $Region) {
-                Write-Error "$Region is not a valid AWS Region, Valid regions are $AllRegions"
-            }
-        }
     }
     PROCESS 
     {
         foreach ($Instance in $InstanceId){
             $Parameters         = @{InstanceId  = $Instance}
-            if ($Region)          {$Parameters.add('Region',$Region)}
+            if ($Region)          { $Parameters.Region      = $Region }
+            if ($ProfileName)     { $Parameters.ProfileName = $ProfileName }
             $InstanceStartInfo  = (Get-EC2Instance @Parameters).Instances
             $InstanceStartStatus= $InstanceStartInfo.State.Name.Value
             $InstanceStatus     = $InstanceStartStatus
