@@ -103,25 +103,21 @@
         # Version of Windows e.g. 2012R2 or 2016. Default is 2016
         [ValidateSet(
             "WindowsServer22H2", 
-            "WindowsServer22H1", 
-            "WindowsServer21H2", 
-            "WindowsServer21H1", 
-            "WindowsServer20H2", 
+            "WindowsServer21H2",  
             "WindowsServer2022",
             "WindowsServer2019",
             "WindowsServer2016",
             "WindowsServer2012R2",
             "22H2",
-            "22H1",
             "21H2",
-            "21H1",
-            "20H2",
             "2022",
             "2019",
             "2016",
             "2012R2",
             "Ubuntu16.04",
             "Ubuntu18.04",
+            "Ubuntu20.04",
+            "Ubuntu22.04",
             "AmazonLinux",
             "AmazonLinux2",
             "AL2",
@@ -137,6 +133,9 @@
         )]
         [string] $OsVersion = "2019",
 
+        [ValidateSet("arm64","x86_64")]
+        [string] $Architecture = "x86_64",
+
         [Parameter(ParameterSetName='SearchSqlIds')]
         [ValidateSet("2017","2016","2014","2012")]
         [string] $SqlVersion,
@@ -144,6 +143,7 @@
         [Parameter(ParameterSetName='SearchSqlIds')]
         [ValidateSet("Express", "Web","Standard","Enterprise")]
         [string] $SqlEdition = "Standard",
+
         [switch] $Core,
         # Instance Profile (with IAM Role) to attach to new Instance
         [string] $InstanceProfile,
@@ -172,13 +172,16 @@
         [string] $SubNetId,
         [ValidateRange(1,15)]
         [Int]    $NetworkInterfaces = 1,
-        [Int]    $Count=1    ,
+        [Int]    $Count = 1,
         # Specifies the Root EBS volume size in GB
         [Int]    $RootVolumeSize,
         # Speciies the Secondary EBS volume size if there is one present in the AMI. If not it will create a new volume and attach it.
         [Int]    $SecondaryVolumeSize,
         # Default is to Keep the secondary volume on instance terminations, but set this switch to kill it
-        [switch] $TerminateSecondaryVolume
+        [switch] $TerminateSecondaryVolume,
+        # The AWS CLI/SDK Credential Profile to use
+        [string] $ProfileName
+
 
     )
     <#DynamicParam 
@@ -203,60 +206,67 @@
             if (-not $Region) {$Region = (Get-DefaultAWSRegion).Region}
             if (-not $Region) {try {$Region = (Get-EC2InstanceMetadata -Category Region).SystemName} catch {}}
             $AvailabilityZone      = $Region+$AZSuffix
-        }
-        
+        }        
+        $GeneralParams = @{}
+        If ($Region)     { $GeneralParams.Region      = $Region}
+        If ($ProfileName){ $GeneralParams.ProfileName = $ProfileName}
     }
     Process {
         if ($SqlVersion) {
             if ($InstanceType -like "t*.*" -and $SqlEdition -ne "Express") {Write-Error "Non Express editions of SQL Server are not permited to run on T2/T3 instance types"}
         }
         
-        if (!$ImageID) {
+        if (-not $ImageID) {
             Write-Verbose       "Getting Current AMI for Selected OS"
-            $ImageParam      = @{OsVersion = $OsVersion}
-            If ($Core)       {$ImageParam.Add('Core',      $true)}
-            If ($Region)     {$ImageParam.Add('Region',    $Region)}
-            If ($SqlVersion) {$ImageParam.Add('SqlVersion',$SqlVersion)}
-            If ($SqlEdition) {$ImageParam.Add('SqlEdition',$SqlEdition)}
-            $Image           = Get-CMEC2ImageId @ImageParam
-            $ImageID         = $Image.ImageId
+            $ImageParam  = @{
+                OsVersion    = $OsVersion
+                Architecture = $Architecture
+            }
+            If ($Core)       { $ImageParam.Core        = $true}
+            If ($ProfileName){ $ImageParam.ProfileName = $ProfileName}
+            If ($Region)     { $ImageParam.Region      = $Region}
+            If ($SqlVersion) { $ImageParam.SqlVersion  = $SqlVersion}
+            If ($SqlEdition) { $ImageParam.SqlEdition  = $SqlEdition}
+            $Image   = Get-CMEC2ImageId @ImageParam
+            $ImageID = $Image.ImageId
         } else {
             $ImageParam      = @{ImageId = $ImageId}
-            If ($Region)     {$ImageParam.Add("Region",$Region)}
-            try {$Image      = Get-EC2Image @ImageParam }
+            If ($Region)     { $ImageParam.Region      = $Region}
+            If ($ProfileName){ $ImageParam.ProfileName = $ProfileName}
+            try {$Image  = Get-EC2Image @ImageParam }
             Catch {}
         }
         if (!$ImageID -or !$Image) { Write-Error "Could not find an image with Search criteria in region $Region"}
         if (!$Keyname) {
             Write-Verbose  "Getting first KeyPair for Region"
-            $KeyName  = (Get-EC2KeyPair -Region $Region)[0].KeyName
-        }
+            $KeyName  = (Get-EC2KeyPair @GeneralParams)[0].KeyName
+    }
         if (!$KeyName)    {Write-Error "No EC2 Key Pairs found in region $Region, please create one"}
         If ($UserData)    {$UserData64 = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($UserData))}
         If (!$SubNetId) { 
             If (!$VpcId)   
             {
                 Write-Verbose   "Getting default VPC"
-                $VpcId  = (Get-EC2Vpc -Region $Region| Where-Object {$_.IsDefault -eq $true}).VpcId
+                $VpcId  = (Get-EC2Vpc @GeneralParams| Where-Object {$_.IsDefault -eq $true}).VpcId
             }
             If (!$VpcId)   { Write-Error "Could not find default VPC in region $Region, Please specify either a VPC or a Subnet Id" }
             Write-Verbose       "Getting Subnet for name $AvailabilityZone"
-            $SubNets = Get-EC2Subnet -Region $Region -Filter @{Name='vpc-id';Values=$VpcId}
+            $SubNets = Get-EC2Subnet @GeneralParams -Filter @{Name='vpc-id';Values=$VpcId}
             If ($AvailabilityZone) {$SubNetId = ( $SubNets | Where-Object {$_.AvailabilityZone -eq $AvailabilityZone})[0].SubnetId}
             else {$SubNetId = ($SubNets | Where-Object {$_.VpcId -eq $VPCid})[(Get-Random -Maximum $($SubNets.Count-1))].SubnetId}
         } Else {
-            $VpcId = (Get-EC2Subnet -Region $Region -SubnetId $SubNetId).VpcId
+            $VpcId = (Get-EC2Subnet @GeneralParams -SubnetId $SubNetId).VpcId
         }
         If (!$VpcId) {Write-Error "Could not determine VPC, check you have a default VPC in the region and if SubnetId is specified, make sure it is valid"}
     
         If ($SecurityGroupName)  {
             Write-Verbose       "finding Security Group named $SecurityGroupName"
-            $SecurityGroupId   = (Get-EC2SecurityGroup -Region $Region | Where-Object {$_.GroupName -eq $SecurityGroupName -and $_.VpcId -eq $VpcId})[0].GroupId
+            $SecurityGroupId   = (Get-EC2SecurityGroup @GeneralParams | Where-Object {$_.GroupName -eq $SecurityGroupName -and $_.VpcId -eq $VpcId})[0].GroupId
             If (!$SecurityGroupId) {Write-Warning "Security Group with $SecurityGroupName cannot be found, using default"}
         } 
         if (!$SecurityGroupId) {
             Write-Verbose       "Getting default Security Group for VPC $VpcId"
-            $SecurityGroupId   = (Get-EC2SecurityGroup -Region $Region | Where-Object {$_.GroupName -eq "default" -and $_.VpcId -eq $VPCId})[0].GroupId
+            $SecurityGroupId   = (Get-EC2SecurityGroup @GeneralParams | Where-Object {$_.GroupName -eq "default" -and $_.VpcId -eq $VPCId})[0].GroupId
             If (!$SecurityGroupId) {Write-Error "No Default security group found in $VpcId"}
         }
         If ($RootVolumeSize){
@@ -264,7 +274,7 @@
             ($BDMs | Where-Object {$_.DeviceName -eq $Image.RootDeviceName}).EBS.VolumeSize = $RootVolumeSize
         }
         If ($SecondaryVolumeSize){
-            If (!$BDMs) {$BDMs = $Image.BlockDeviceMappings}
+            If (-not $BDMs) {$BDMs = $Image.BlockDeviceMappings}
             Try {
                 ($BDMs | Where-Object {$_.DeviceName -ne $Image.RootDeviceName -and $null -ne $_.Ebs})[0].EBS.VolumeSize = $SecondaryVolumeSize
             } Catch {
@@ -272,15 +282,14 @@
                     DeviceName = if ($Image.Platform -eq "Windows"){"xvdb"}
                         Else {"/dev/sdb"}
                     Ebs = [Amazon.EC2.Model.EbsBlockDevice]@{
-                        VolumeSize = $SecondaryVolumeSize
+                        VolumeSize          = $SecondaryVolumeSize
                         DeleteOnTermination = ($TerminateSecondaryVolume -ne $false)
                     }
                 }
                 $BDMs += $SecondaryBdm
             }
         }
-        $Params    = @{
-            Region           = $Region
+        $InstanceParams    = @{
             MinCount         = $Count
             MaxCount         = $Count
             InstanceType     = $InstanceType
@@ -291,30 +300,21 @@
         }
             
         if ($Name) {
-            $tag1 = @{ Key="Name"; Value=$Name }
-            $Tags = @()
-            $tagspec1 = New-Object -Type Amazon.EC2.Model.TagSpecification
-            $tagspec1.ResourceType = "instance"
-            $tagspec1.Tags.Add($tag1)
-            $Tags+=$tagspec1
-            $tagspec2 = New-Object -Type Amazon.EC2.Model.TagSpecification
-            $tagspec2.ResourceType = "volume"
-            $tagspec2.Tags.Add($tag1)
-            $Tags+=$tagspec2
-            $Params.Add("TagSpecification",$Tags)
+            $InstanceParams.TagSpecification = @(
+                [Amazon.EC2.Model.TagSpecification]@{
+                    ResourceType = "instance"
+                    Tags         = @(@{ Key="Name"; Value=$Name })    },
+                [Amazon.EC2.Model.TagSpecification]@{
+                    ResourceType = "volume"
+                    Tags         = @(@{ Key="Name"; Value=$Name })    }
+            )
         }
-        If ($SpotInstance) {
-            $InstanceMarketOption = @{
-                MarketType ="Spot"
-            }
-            $Params.Add("InstanceMarketOption",$InstanceMarketOption)
-        }
-            
-            If ($UserData64)      {$Params.Add("UserData",$UserData64)}
-            If ($InstanceProfile) {$Params.Add("InstanceProfile_Name",$InstanceProfile)}
-            If ($BDMs)            {$Params.Add("BlockDeviceMapping",$BDMs)}
-            
-            $InstanceId       = (New-EC2Instance @Params).Instances.InstanceId
+        If ($SpotInstance)    { $InstanceParams.InstanceMarketOption = @{MarketType ="Spot"} }
+        If ($UserData64)      { $InstanceParams.UserData             = $UserData64 }
+        If ($InstanceProfile) { $InstanceParams.InstanceProfile_Name = $InstanceProfile }
+        If ($BDMs)            { $InstanceParams.BlockDeviceMapping   = $BDMs }
+        
+        $InstanceId       = (New-EC2Instance @InstanceParams).Instances.InstanceId
                     
         if ($Name -and $Count -eq 1) {
             If ($DomainName) {
@@ -327,15 +327,15 @@
             $HostName = $RunningInstance.PublicIPAddress
         }
         [PSCustomObject]@{
-            InstanceId            = $InstanceId
-            Region                = $Region
-            Name                  = $Name
-            Hostname              = $HostName
-            InstanceType          = $InstanceType
-            ImageName             = $Image.Name
-            ImageId               = $ImageId
-            KeyName               = $KeyName
-            InstanceProfile       = $InstanceProfile
+            InstanceId      = $InstanceId
+            Region          = $Region
+            Name            = $Name
+            Hostname        = $HostName
+            InstanceType    = $InstanceType
+            ImageName       = $Image.Name
+            ImageId         = $ImageId
+            KeyName         = $KeyName
+            InstanceProfile = $InstanceProfile
         }
     }
 }
