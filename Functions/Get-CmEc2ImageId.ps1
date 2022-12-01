@@ -4,21 +4,15 @@
 .DESCRIPTION
     Outputs only the image ID of the latest AWS EC2 AMI based on option you specficy such as Windows version, SQL verison and SQL Edition or Amazon Linux(2) or Ubuntu
 
-    Supports Core and Container based AMIS and Windows version 2003, 2008, 2008R2, 2012, 2012 R2, 2016, 1709, 1803, 1809 and 2019
+    Supports Core and Container based AMIS and Windows version 2012 R2, 2016, 1709, 1803, 1809 and 2019
 
     It does this mostly by querying the SSM public paramter store, so the user that is running this must have the AWS PowerShell Module installed and configured as well permission to the  ssm:describeparameter action
     
 .EXAMPLE
-    PS C:\> (Get-CmEc2ImageId -OsVersion WindowsServer2016 -Region us-east-1).ImageId
+    PS C:\> (Get-CmEc2ImageId -OsVersion WindowsServer2022 -Region us-east-1).ImageId
     ami-041114ddee4a98333
 
     Above finds the latest Windows Server 2016 Base AMI in us-east-1 region
-.EXAMPLE
-    PS C:\> Get-CmEc2ImageId -OsVersion WindowsServer2012R2 -SqlVersion 2008R2
-    WARNING: SQL Server 2008 R2 and 2012 only supported on Windows Server 2008R2 and 2012, switching to Windows 2012
-    ami-0193fd36c14f87865
-
-    Here SQL server 2008R2 is not supported on Windows 2012 R2 and it has automatically changed the OS to the latest one that supports this SQL version
 .EXAMPLE
     PS C:\> Get-CmEc2ImageId -OsVersion 2019 -Core -Containers -Region us-east-1
     ami-0f3d4a916972fd1ac
@@ -28,10 +22,8 @@
     PS C:\> New-EC2Instance -Region us-east-1 -Subnet subnet-97654567890 -ImageId (Get-CmEc2ImageId -OsVersion WindowsServer2016 -Region us-east-1).ImageId -KeyPair MyKeyPair
 
     This launches an instance in the us-east-1 region getting the latest AMI for Windows Serve 2016 in that region.
-.INPUTS
-    Inputs to this cmdlet (if any)
 .OUTPUTS
-    ImageId (String)
+    Image (String)
 .NOTES
     General notes
 .COMPONENT
@@ -59,26 +51,17 @@ Function Get-CmEc2ImageId {
             "2019",
             "2016",
             "2012R2",
-            "Ubuntu",
             "Ubuntu22.04",
             "Ubuntu20.04",
             "Ubuntu18.04",
-            "Ubuntu16.04",
-            "AmazonLinux",
             "AmazonLinux2",
-            "AL2",
-            "AL1",
-            "AL",
             "AmazonLinux2NetCore",
-            "AL2NetCore",
-            "UbuntuNetCore",
-            "EcsAmazonLinux",
             "EcsAmazonLinux2",
             "EcswindowsServer2016",
             "EcswindowsServer2019"
         )]
         [string] $OsVersion = "2022",
-        [ValidateSet("2019", "2017", "2016", "2014", "2012")]
+        [ValidateSet("2019", "2017", "2016", "2014")]
         [string] $SqlVersion,
 
         [ValidateSet("Express", "Web", "Standard", "Enterprise")]
@@ -86,7 +69,6 @@ Function Get-CmEc2ImageId {
 
         [switch] $Core,
         [switch] $Containers,
-        [switch] $NoSwitching,
         
         [ValidateScript( { @((Get-AWSRegion).Region) })]
         [string] $Region,
@@ -111,15 +93,12 @@ Function Get-CmEc2ImageId {
     If ($OsVersion -like "WindowsServer*") {
         $OsVersion = $OsVersion.Substring(13)
     } 
-    if ($OsVersion -eq "Ubuntu"){
-        $OsVersion = "Ubuntu22.04"
-    }
     $GeneralParams = @{}
     If ($Region)     { $GeneralParams.Region      = $Region}
     If ($ProfileName){ $GeneralParams.ProfileName = $ProfileName}
     if ($Architecture -eq "arm64"){
         If ($OsVersion -match '^(20(1(2R2|6|9))|22)|2[0-2]H(1|2)$' -or $OsVersion -like "EcsWindowsServer*") {
-            Write-Error "Windows not available on ARM"
+            Write-Error "Windows Server not available on ARM"
         }
     }
     If ($OsVersion -match '^(20(1(2R2|6|9))|22)|2[12]H2$') {           # Windows Image Logic
@@ -137,7 +116,6 @@ Function Get-CmEc2ImageId {
             $Base = $False
             If ($Core -and $OsVersion -ne 2016 -and $SqlVersion ) { Write-Warning "SQL only avaialable on Core Editions of Windows Server 2016, Switching to Full"; $Core = $False }
             If ($Containers) { Write-Warning "SQL AMI not available with Containers, Switching to Non-Containers"; $Containers = $False }
-            If ($SqlVersion -eq "2012") { $SqlSp = "_SP4" }
             If ($SqlVersion -eq "2014") { $SqlSp = "_SP3" }
             If ($SqlVersion -eq "2016") { $SqlSp = "_SP2" }
             $SqlVersion = $SqlVersion.ToUpper()
@@ -184,24 +162,17 @@ Function Get-CmEc2ImageId {
             else { $SearchString = $BaseText + "2012-R2_RTM-" + $Language + "-64Bit-" + $SqlText }
         }
     }
-    If ($OsVersion -match "^Ubuntu(1[68]|2[02])\.04$") {
-        $Filter = @{Name = "name"; Values = "ubuntu/images/hvm-ssd/ubuntu-*-$($OsVersion.TrimStart("Ubuntu"))-$Architecture-server-20??????" }
+    If ($OsVersion -match "^Ubuntu(18|2[02])\.04$") {
+        if ($Architecture -EQ 'x86_64'){ $UbuntuArch = 'amd64' }
+        else{$UbuntuArch = $Architecture}
+        $Filter = @{Name = "name"; Values = "ubuntu/images/hvm-ssd/ubuntu-*-$($OsVersion.TrimStart("Ubuntu"))-$UbuntuArch-server-20??????" }
         $Images = Get-Ec2Image @GeneralParams -Filter $Filter
     }
     If ("AmazonLinux2", "AL2" -contains $OsVersion) {
         $SearchString = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-$Architecture-gp2"
     }
-    If ("AmazonLinux", "AL1", "AL" -contains $OsVersion) {
-        $SearchString = "/aws/service/ami-amazon-linux-latest/amzn-ami-hvm-$Architecture-gp2"
-    }
     If ("AmazonLinux2NetCore", "AL2NetCore" -contains $OsVersion) {
         $Images = Get-Ec2Image @GeneralParams -Filter @{ Name = "name"; Values = "amzn2-$Architecture-*DOTNET*" }
-    }
-    If ($OsVersion -eq "UbuntuNetCore") {
-        $Images = Get-Ec2Image @GeneralParams -Filter @{ Name = "name"; Values = "ubuntu*$Architecture*dotnetcore*" }
-    }
-    If ($OsVersion -eq "EcsAmazonLinux") {
-        $SearchString = "/aws/service/ecs/optimized-ami/amazon-linux/recommended/image_id"
     }
     If ($OsVersion -eq "EcsAmazonLinux2") {
         $SearchString = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
