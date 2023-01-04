@@ -96,29 +96,21 @@
             "WindowsServer2019",
             "WindowsServer2016",
             "WindowsServer2012R2",
-            "22H2",
-            "21H2",
-            "2022",
-            "2019",
-            "2016",
-            "2012R2",
             "Ubuntu18.04",
             "Ubuntu20.04",
             "Ubuntu22.04",
+            "AmazonLinux2022",
             "AmazonLinux2",
-            "AmazonLinux2NetCore",
-            "UbuntuNetCore",
-            "EcsAmazonLinux2",
-            "EcswindowsServer2016",
-            "EcswindowsServer2019"
+            "AmazonLinux2NetCore"
         )]
-        [string] $OsVersion = "2019",
+        [Parameter(ParameterSetName='SearchImageIds')]
+        [string] $OsVersion = "WindowsServer2022",
 
-        [Parameter(ParameterSetName='SearchSqlIds')]
-        [ValidateSet("2017","2016","2014","2012")]
+        [Parameter(ParameterSetName='SearchImageIds')]
+        [ValidateSet("2022","2019","2017","2016","2014")]
         [string] $SqlVersion,
 
-        [Parameter(ParameterSetName='SearchSqlIds')]
+        [Parameter(ParameterSetName='SearchImageIds')]
         [ValidateSet("Express", "Web","Standard","Enterprise")]
         [string] $SqlEdition = "Standard",
 
@@ -128,10 +120,11 @@
         # Path to User data file , using Your My Documents folder as a root
         [string] $UserData,
         #Specify an AMI id like ami-2b8c8452
-        [Parameter(ValueFromPipeline       =$true,
-            ValueFromPipelineByPropertyName=$true,
-            ParameterSetName               ='ImageId',
-            Mandatory                      =$true)]
+        [Parameter(
+            ValueFromPipeline               = $true,
+            ValueFromPipelineByPropertyName = $true,
+            ParameterSetName                = 'ImageId',
+            Mandatory                       = $true)]
         [ValidatePattern("^ami-([\da-f]{8}|[\da-f]{17})$")]
         [string] $ImageId,
         # The name of the Security Group, not the Security Group ID. The Function will get the ID. If none is specified the default Security Group is used.
