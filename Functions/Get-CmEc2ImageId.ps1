@@ -34,10 +34,11 @@
     The functionality that best describes this cmdlet
 #>
 Function Get-CmEc2ImageId {
+    [OutputType([Amazon.Route53.Model.ChangeInfo])]
     [CmdletBinding(DefaultParameterSetName = 'Windows')]
     Param(
         [Parameter(Position = 0)]
-        #[ValidatePattern('WindowsServer2(0(1(2R2|6|9)|22)|[12]H2)|Ubuntu(18|2[02])\.04|AmazonLinux(2(022)?)?')]
+        #[ValidatePattern('WindowsServer2(0(1(2R2|6|9)|22)|[12]H2)|Ubuntu(18|2[02])\.04|AmazonLinux2(02\d)?')]
         [ValidateSet(
             "WindowsServer22H2", 
             "WindowsServer21H2", 
@@ -50,6 +51,9 @@ Function Get-CmEc2ImageId {
             "Ubuntu18.04",
             "AmazonLinux2",
             "AmazonLinux2022",
+            "AmazonLinux2023",
+            "AmazonLinux2025",
+            "AmazonLinux2027",
             "AmazonLinux2NetCore"
         )]
         [string] $OsVersion = "WindowsServer2022",
@@ -76,8 +80,8 @@ Function Get-CmEc2ImageId {
             "Chinese_Traditional", "Chinese_Simplified", "Czech",
             "Dutch", "English", "French", "German", "Hungarian",
             "Korean", "Japanese", "Polish", "Portuguese_Brazil",
-            "Russian", "Spanish", "Swedish", "Turkish"
-        )][string] $Language = "English",
+            "Russian", "Spanish", "Swedish", "Turkish")]
+        [string] $Language = "English",
         # Return only the Image Id as a string.
         [switch] $ImageIdOnly,
         # The AWS CLI/ SDK Credential Profile to use
@@ -163,18 +167,18 @@ Function Get-CmEc2ImageId {
         $Filter = @{Name = "name"; Values = "ubuntu/images/hvm-ssd/ubuntu-*-$($OsVersion.TrimStart("Ubuntu"))-$UbuntuArch-server-20??????" }
         $Images = Get-Ec2Image @GeneralParams -Filter $Filter
     }
-    If ($OsVersion -in @("AmazonLinux2022","AmazonLinux2")) {
-        $BaseText = "/aws/service/ami-amazon-linux-latest/"
+    If ($OsVersion -match "^AmazonLinux2(02\d)?$") {
+        $BaseText = "/aws/service/ami-amazon-linux-latest"
         $ALVersion = $OsVersion.TrimStart('AmazonLinux') 
-        if     ($ALVersion -eq "2")    {$SearchString = $BaseText+"amzn2-ami-hvm-$Architecture-gp2"} 
-        elseif ($ALVersion -eq "2022") {$SearchString = $BaseText+"al2022-ami-kernel-default-$Architecture"} 
+        if     ($ALVersion -eq "2")    {$SearchString = "$BaseText/amzn2-ami-hvm-$Architecture-gp2"} 
+        elseif ($ALVersion -match "202\d") {$SearchString = "$BaseText/al$ALVersion-ami-kernel-default-$Architecture"} 
         if ($EcsOptimized){
             $SearchString = "/aws/service/ecs/optimized-ami/amazon-linux-$ALVersion/"
             if ($Architecture -EQ "x86_64") { $SearchString += "recommended/image_id" }
             else { $SearchString += "$Architecture/recommended/image_id" }
         }
     }
-    If ("AmazonLinux2NetCore", "AL2NetCore" -contains $OsVersion) {
+    If ($OsVersion -eq "AmazonLinux2NetCore") {
         $Images = Get-Ec2Image @GeneralParams -Filter @{ Name = "name"; Values = "amzn2-$Architecture-*DOTNET*" }
     }
     If ($SearchString) {
@@ -182,7 +186,7 @@ Function Get-CmEc2ImageId {
             $ImageId = (Get-SSMParameter @GeneralParams -Name $SearchString ).Value
             Write-Verbose "Got ImageId $ImageId"
         } 
-        Catch { Write-Error "AMI Not Found" }
+        Catch { Write-Error "AMI Not Found with error: $($Error[0])" }
     }
     if ($Images) { $Image = $Images | Where-Object Name -NotMatch "beanstalk" | Sort-Object Name | Select-Object -Last 1 }
     If ($ImageIdOnly) {

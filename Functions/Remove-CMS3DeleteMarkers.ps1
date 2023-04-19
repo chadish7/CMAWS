@@ -40,12 +40,12 @@ In this example, only the delete markers for files that have the word "file" in 
         [string] $BucketName,
         [string] $MatchTerm
     )
-    $InputObject = (Get-S3Version -BucketName $BucketName).Versions | Where {$_.IsDeleteMarker -eq "True" -and $_.key -like "*$MatchTerm*"}
+    $InputObject = (Get-S3Version -BucketName $BucketName).Versions | Where-Object {$_.IsDeleteMarker -eq "True" -and $_.key -like "*$MatchTerm*"}
     While ($InputObject) {
-        $Workingset = $InputObject | Select -First 1000
+        $Workingset = $InputObject | Select-Object -First 1000
         Remove-S3Object -Force -InputObject $Workingset
         Foreach ($Item in $Workingset){
-            $InputObject = $InputObject | Where {$_ -notcontains $Item}
+            $InputObject = $InputObject | Where-Object {$_ -notcontains $Item}
         }
     }
 }

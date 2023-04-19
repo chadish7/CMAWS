@@ -54,6 +54,7 @@
 
 
 #>    
+    [OutputType([String])]
     [Cmdletbinding()]
     Param(
         [Parameter(Mandatory               =$true,

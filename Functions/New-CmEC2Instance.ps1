@@ -99,6 +99,7 @@
             "Ubuntu18.04",
             "Ubuntu20.04",
             "Ubuntu22.04",
+            "AmazonLinux2023",
             "AmazonLinux2022",
             "AmazonLinux2",
             "AmazonLinux2NetCore"

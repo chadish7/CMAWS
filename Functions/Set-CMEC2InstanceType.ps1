@@ -115,8 +115,7 @@
                 if ($HostName) {
                     $OutputProperties.Add('Hostname', $HostName)
                 }
-                $OutputObject     = New-Object -TypeName PSObject -Property $OutputProperties
-                Write-Output      $OutputObject
+                [PSCustomObject]$OutputProperties
             }
         }
     }

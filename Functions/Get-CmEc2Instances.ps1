@@ -1,4 +1,5 @@
 ﻿Function Get-CmEc2Instances {
+    [OutputType([PSCustomObject])]
     [Cmdletbinding()]
     Param (
         [ValidateScript( { @((Get-AWSRegion).Region) })]

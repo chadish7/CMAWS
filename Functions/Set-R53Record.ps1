@@ -51,6 +51,7 @@
             Defines an optional R53 comment.
             Not mandatory, not included if not explicitly defined.
     #>
+    [OutputType([Amazon.Route53.Model.ChangeInfo])]
     Param (
         [Parameter(Mandatory=$True)]
         [String]   $Domain,

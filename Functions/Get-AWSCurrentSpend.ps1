@@ -1,4 +1,5 @@
 Function Get-AWSCurrentSpend {
+    [OutputType([PSCustomObject])]
     param (
         # The AWS CLI or PowerShell tools profile to use for Authentications
         [String] $ProfileName

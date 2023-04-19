@@ -17,7 +17,7 @@ function Get-CMCFNParameters {
   Try   { $Parameters = [PSCustomObject]($Template | ConvertFrom-Yaml).Parameters }
   Catch { $Parameters = [PSCustomObject]($Template | ConvertFrom-Json).Parameters }
   If ($Parameters){
-    foreach ($Param in ($Parameters | Get-Member | Where MemberType -eq "NoteProperty").Name) { 
+    foreach ($Param in ($Parameters | Get-Member | Where-Object MemberType -eq "NoteProperty").Name) { 
       $Text+='    @{ParameterKey="'+$Param+'"; ParameterValue='+$(
         if ($Parameters.$Param.Default) {'"'+$Parameters.$Param.Default+'"'}
         elseif ($Parameters.$Param.Type -eq "AWS::EC2::SecurityGroup::Id"){if ($SGId)     {'$SGId'}      else {'""'}}
