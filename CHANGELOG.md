@@ -1,3 +1,6 @@
+## v1.3.4
+- Added support for Latest EC2 instances types.
+
 ## v1.3.3
 - Added support for AmazonLinux2023 to `Get-CmEc2ImageId` and `Get-CmEc2Instances` parameter `OsVersion`.
 - Fixed `Get-CmEc2ImageId` bad error handling for searching SSM Parameters.

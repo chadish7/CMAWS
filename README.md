@@ -1,5 +1,5 @@
 # CMAWS
-A PowerShell module with AWS helper cmdlets for AWS EC2, SSM and Polly and Route53
+A PowerShell module with AWS helper cmdlets for AWS EC2, SSM, Polly, S3, CloudFormation, and Route53
 
 ## Installation
 To install the this module using PowerShell 5 or higher use the following command:
@@ -36,7 +36,7 @@ C:\> New-CMEC2Instance -InstanceType t2.micro -Region us-east-1 -Name MyInstance
     Name                  : MyInstance
     Hostname              : MyInstance.mydomain.com
     InstanceType          : t2-micro
-    ImageName             : al2022-ami-2022.0.20230118.3-kernel-5.15-x86_64
+    ImageName             : al2023-ami-2022.0.20230118.3-kernel-5.15-x86_64
     ImageID               : ami-40003a26
     KeyName               : MyKeyPair
 

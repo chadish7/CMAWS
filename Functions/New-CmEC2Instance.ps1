@@ -82,6 +82,7 @@
         [ValidateScript({@((Get-AWSRegion).Region)})]
         [string] $Region,
         [Parameter(Mandatory=$true)]
+        [ValidateScript({(Get-CmEc2InstanceTypes)})]
         [Alias("Type")] 
         [String] $InstanceType,
         # Applies this name tag to the instance after creation, if -DomainName is specified as well then registers a DNS CNAME for your instance using this name
