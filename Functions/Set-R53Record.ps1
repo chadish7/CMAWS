@@ -58,6 +58,7 @@
         [Parameter(Mandatory=$True)]
         [ValidateSet("A","CNAME","TXT","MX","AAAA","PTR","NS","SOA")]
         [String]   $Type,
+        [Parameter(ValueFromPipelineByPropertyName = $true)]
         [String]   $Name,
         [Parameter(Mandatory=$True)]
         [String]   $Value,
