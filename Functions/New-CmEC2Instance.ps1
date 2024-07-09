@@ -8,17 +8,17 @@
 .NOTES   
     Name:        New-CMEC2Instance
     Author:      Chad Miles
-    DateUpdated: 2017-05-02
-    Version:     1.2.0
+    DateUpdated: 2023-08-29
+    Version:     1.5.0
 
 .EXAMPLE
-    C:\> New-CMEC2Instance -InstanceType t2.micro -Region us-east-1 -DomainName mydomain.com -Name MyInstance
+    C:\> New-CMEC2Instance -InstanceType t3a.small -Region us-east-1 -DomainName mydomain.com -Name MyInstance
     
     InstanceID            : i-1234567890abcdef
     Region                : us-east-1
     Name                  : MyInstance
     Hostname              : MyInstance.Mydomain.com
-    InstanceType          : t2-micro
+    InstanceType          : t3a.small
     BidPrice              : 
     OnDemandPrice         : 0.017
     Savings               : 0 %
@@ -27,61 +27,66 @@
     KeyName               : MyKeyPair
     
 .EXAMPLE
-    C:\> New-CMEC2Instance -InstanceType t2.micro -Region us-east-1 -Name MyInstance
+    C:\> New-CMEC2Instance -InstanceType t3a.small -Region us-east-1 -Name MyInstance
     
     InstanceID            : i-1234567890abcdef
     Region                : us-east-1
     Name                  : MyInstance
     Hostname              : ec2-34-248-2-178.eu-west-1.compute.amazonaws.com
-    InstanceType          : t2-micro
+    InstanceType          : t3a.small
     ImageName             : WINDOWS_2016_BASE
     ImageID               : ami-58a1a73e
     KeyName               : MyKeyPair
 
 .EXAMPLE
-    C:\> New-CMEC2Instance -InstanceType t2.micro -Region us-east-1 -Name MyInstance -DomainName mydomain.com -OSVerion 2012R2
+    C:\> New-CMEC2Instance -InstanceType t3a.small -Region us-east-1 -Name MyInstance -DomainName mydomain.com -OSVerion 2012R2
     
     InstanceID            : i-1234567890abcdef
     Region                : us-east-1
     Name                  : MyInstance
     Hostname              : MyInstance.Mydomain.com
-    InstanceType          : t2-micro
+    InstanceType          : t3a.small
     ImageName             : WINDOWS_2012R2_BASE
     ImageID               : ami-40003a26
     KeyName               : MyKeyPair
 
 .EXAMPLE
-    C:\> New-CMEC2Instance -InstanceType t2.micro -Region us-east-1 -Name MyInstance -DomainName mydomain.com -SpotRequest
+    C:\> New-CMEC2Instance -InstanceType t3a.small -Region us-east-1 -Name MyInstance -DomainName mydomain.com -SpotRequest
 
     InstanceID            : i-1234567890abcdef
     Region                : us-east-1
     Name                  : MyInstance
     Hostname              : MyInstance.Mydomain.com
-    InstanceType          : t2-micro
+    InstanceType          : t3a.small
     ImageName             : WINDOWS_2016_BASE
     ImageID               : ami-40003a26
     KeyName               : MyKeyPair
 
 .EXAMPLE
-    C:\> New-CMEC2Instance -InstanceType m3.medium -Region us-east-1 -Name TestInstance -DomainName mydomain.com -RootVolumeSize 50 -SecondaryVolumeSize 100
+    C:\> New-CMEC2Instance -InstanceType m6a.large-Region us-east-1 -Name TestInstance -DomainName mydomain.com -RootVolumeSize 50 -SecondaryVolumeSize 100
     
     InstanceID            : i-1234567890abcdef
     Region                : us-east-1
     Name                  : TestInstance
     Hostname              : TestInstance.Mydomain.com
-    InstanceType          : m3.medium
+    InstanceType          : m6a.large
     ImageName             : WINDOWS_2016_BASE
     ImageID               : ami-58a1a73e
     KeyName               : MyKeyPair
 
 #>
-    [CmdletBinding( 
-        SupportsShouldProcess   = $true,
-        DefaultParameterSetName = 'SearchBaseIds')]
+    [CmdletBinding(
+        DefaultParameterSetName = 'SearchBaseIds'
+    )]
     Param (
-        [ValidateScript({@((Get-AWSRegion).Region)})]
+        [ValidateScript({
+            @((Get-AWSRegion).Region)
+        })]
         [string] $Region,
         [Parameter(Mandatory=$true)]
+        [ValidateScript({
+            (Get-Ec2InstanceType -Region $Region).InstanceType
+        })]
         [Alias("Type")] 
         [String] $InstanceType,
         # Applies this name tag to the instance after creation, if -DomainName is specified as well then registers a DNS CNAME for your instance using this name
@@ -90,17 +95,13 @@
         [string] $DomainName,
         # Version of Windows e.g. 2012R2 or 2016. Default is 2016
         [ValidateSet(
-            "WindowsServer22H2", 
-            "WindowsServer21H2",  
             "WindowsServer2022",
             "WindowsServer2019",
             "WindowsServer2016",
-            "WindowsServer2012R2",
-            "Ubuntu18.04",
             "Ubuntu20.04",
             "Ubuntu22.04",
+            "Ubuntu24.04",
             "AmazonLinux2023",
-            "AmazonLinux2022",
             "AmazonLinux2",
             "AmazonLinux2NetCore"
         )]
@@ -108,7 +109,7 @@
         [string] $OsVersion = "WindowsServer2022",
 
         [Parameter(ParameterSetName='SearchImageIds')]
-        [ValidateSet("2022","2019","2017","2016","2014")]
+        [ValidateSet("2022","2019","2017","2016")]
         [string] $SqlVersion,
 
         [Parameter(ParameterSetName='SearchImageIds')]
@@ -120,7 +121,7 @@
         [string] $InstanceProfile,
         # Path to User data file , using Your My Documents folder as a root
         [string] $UserData,
-        #Specify an AMI id like ami-2b8c8452
+        # Specify an AMI id like ami-2b8c8452
         [Parameter(
             ValueFromPipeline               = $true,
             ValueFromPipelineByPropertyName = $true,
@@ -153,8 +154,6 @@
         [switch] $TerminateSecondaryVolume,
         # The AWS CLI/SDK Credential Profile to use
         [string] $ProfileName
-
-
     )
     BEGIN 
     {
@@ -188,10 +187,7 @@
             If ($SqlEdition) { $ImageParam.SqlEdition  = $SqlEdition}
             $ImageId = ($Image = Get-CMEC2ImageId @ImageParam @GeneralParams).ImageId
         } else {
-            $ImageParam      = @{ImageId = $ImageId}
-            If ($Region)     { $ImageParam.Region      = $Region}
-            If ($ProfileName){ $ImageParam.ProfileName = $ProfileName}
-            try {$Image  = Get-EC2Image @ImageParam @GeneralParams}
+            try { $Image  = Get-EC2Image -ImageId $ImageId @GeneralParams }
             Catch {}
         }
         if (-not $ImageId -or -not $Image) { Write-Error "Could not find an image with Search criteria in region $Region"}
@@ -199,8 +195,8 @@
         if (-not $Keyname) {
             Write-Verbose  "Getting first KeyPair for Region"
             $KeyName  = (Get-EC2KeyPair @GeneralParams)[0].KeyName
-    }
-        if (-not $KeyName)    {Write-Error "No EC2 Key Pairs found in region $Region, please create one"}
+        }
+        if (-not $KeyName)    {Write-Warning "No EC2 Key Pairs found in region $Region, Launching without one"}
         If ($UserData)    {$UserData64 = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($UserData))}
         If (-not $SubNetId) { 
             If (-not $VpcId)   
@@ -219,7 +215,7 @@
         If (-not $VpcId) {Write-Error "Could not determine VPC, check you have a default VPC in the region and if SubnetId is specified, make sure it is valid"}
     
         If ($SecurityGroupName)  {
-            Write-Verbose       "finding Security Group named $SecurityGroupName"
+            Write-Verbose       "Finding Security Group named $SecurityGroupName"
             $SecurityGroupId   = (Get-EC2SecurityGroup @GeneralParams | Where-Object {$_.GroupName -eq $SecurityGroupName -and $_.VpcId -eq $VpcId})[0].GroupId
             If (!$SecurityGroupId) {Write-Warning "Security Group with $SecurityGroupName cannot be found, using default"}
         } 
@@ -255,7 +251,6 @@
             SecurityGroupId  = $SecurityGroupId
             ImageId          = $ImageId
             SubnetId         = $SubNetId
-            KeyName          = $KeyName
         }
             
         if ($Name) {
@@ -268,6 +263,7 @@
                     Tags         = @(@{ Key="Name"; Value=$Name })    }
             )
         }
+        If ($KeyName)         { $InstanceParams.KeyName              = $KeyName }
         If ($SpotInstance)    { $InstanceParams.InstanceMarketOption = @{MarketType ="Spot"} }
         If ($UserData64)      { $InstanceParams.UserData             = $UserData64 }
         If ($InstanceProfile) { $InstanceParams.InstanceProfile_Name = $InstanceProfile }
@@ -276,25 +272,28 @@
         $InstanceId       = ($NewInstance = (New-EC2Instance @InstanceParams @GeneralParams).Instances).InstanceId
         
         if ($Name -and $Count -eq 1) {
+            $HostName = $Name
             If ($DomainName) {
-                $DNSParams        = @{InstanceId    = $InstanceId}
-                if($Region)        {$DNSParams.Add('Region',$Region)}
-                $SetDns           = Set-CmEc2DnsName @DNSParams -DomainName $DomainName -InstanceName $Name
-                $HostName         = $SetDns.Hostname
+                $DNSParams = @{InstanceId    = $InstanceId}
+                if($Region) {
+                    $DNSParams.Add('Region',$Region)
+                }
+                $SetDns   = Set-CmEc2DnsName @DNSParams -DomainName $DomainName -InstanceName $Name
+                $HostName = $SetDns.Hostname
             }
         } else {
-            $HostName = $RunningInstance.PublicIPAddress
+            $HostName = $NewInstance.PublicIPAddress
         }
         [PSCustomObject]@{
-            InstanceId      = $InstanceId
-            Region          = $NewInstance.Placement.AvailabilityZone.Trimend('abcdef')
-            Name            = $Name
-            Hostname        = $HostName
-            InstanceType    = $InstanceType
-            ImageName       = $Image.Name
-            ImageId         = $ImageId
-            KeyName         = $KeyName
-            InstanceProfile = $InstanceProfile
+            InstanceId       = $InstanceId
+            AvailabilityZone = $NewInstance.Placement.AvailabilityZone
+            Name             = $Name
+            Hostname         = $HostName
+            InstanceType     = $InstanceType
+            ImageName        = $Image.Name
+            ImageId          = $ImageId
+            KeyName          = $KeyName
+            InstanceProfile  = $InstanceProfile
         }
     }
 }
