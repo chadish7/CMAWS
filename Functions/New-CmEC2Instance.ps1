@@ -95,6 +95,7 @@
         [string] $DomainName,
         # Version of Windows e.g. 2012R2 or 2016. Default is 2016
         [ValidateSet(
+            "WindowsServer2025",
             "WindowsServer2022",
             "WindowsServer2019",
             "WindowsServer2016",
@@ -106,7 +107,7 @@
             "AmazonLinux2NetCore"
         )]
         [Parameter(ParameterSetName='SearchImageIds')]
-        [string] $OsVersion = "WindowsServer2022",
+        [string] $OsVersion = "WindowsServer2025",
 
         [Parameter(ParameterSetName='SearchImageIds')]
         [ValidateSet("2022","2019","2017","2016")]

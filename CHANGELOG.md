@@ -1,3 +1,6 @@
+## v1.3.4
+- Added support for WindowsServer2025 to `Get-CmEc2ImageId` and `Get-CmEc2Instances` parameter `OsVersion`.
+
 ## v1.3.3
 - Added support for AmazonLinux2023 to `Get-CmEc2ImageId` and `Get-CmEc2Instances` parameter `OsVersion`.
 - Fixed `Get-CmEc2ImageId` bad error handling for searching SSM Parameters.

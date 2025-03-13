@@ -40,6 +40,7 @@ Function Get-CmEc2ImageId {
         [Parameter(Position = 0)]
         #[ValidatePattern('WindowsServer20(16|19|22)|Ubuntu2[0246]\.04|AmazonLinux2(02\d)?')]
         [ValidateSet(
+            "WindowsServer2025",
             "WindowsServer2022",
             "WindowsServer2019",
             "WindowsServer2016",
@@ -50,7 +51,7 @@ Function Get-CmEc2ImageId {
             "AmazonLinux2023",
             "AmazonLinux2NetCore"
         )]
-        [string] $OsVersion = "WindowsServer2022",
+        [string] $OsVersion = "WindowsServer2025",
         [ValidateSet("2022","2019", "2017", "2016")]
         [Parameter(ParameterSetName='SQL')]
         [string] $SqlVersion,
@@ -123,14 +124,14 @@ Function Get-CmEc2ImageId {
     
         $BaseText  = "/aws/service/ami-windows-latest/Windows_Server-"
 
-        if ($WindowsVersion -match '20(16|19|22)') {
+        if ($WindowsVersion -match '20(16|19|22|25)') {
             if ($Core) { $SearchString = $BaseText + $WindowsVersion + "-" + $Language + "-Core" }
             else { $SearchString = $BaseText + $WindowsVersion + "-" + $Language + "-Full" }
             if ($Base) { $SearchString += "-Base" }
             elseif ($SqlVersion) { $SearchString += $SqlText}
             elseif ($Containers) {
                 if ($WindowsVersion -eq '2016') { $SearchString += "-Containers" }
-                if ($WindowsVersion -match '20(19|22)') { $SearchString += "-ContainersLatest" }
+                if ($WindowsVersion -match '20(19|22|25)') { $SearchString += "-ContainersLatest" }
             }
             elseif ($EcsOptimized) {
                 $SearchString += '-ECS_Optimized/image_id'
