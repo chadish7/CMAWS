@@ -3,8 +3,12 @@ name: publish
 on:
   push:
     branches: [ "master" ]
+    paths:
+      - 'CMAWS.psd1'
   pull_request:
     branches: [ "master" ]
+    paths:
+      - 'CMAWS.psd1'
 
   workflow_dispatch:
 
@@ -15,9 +19,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      # - name: Update PowerShell Get
-      #   run: powershell -c "Update-Module PowerShellGet -Force"
+      - name: Set PSGallery to trusted
+        shell: pwsh
+        run: Set-PSReposity -Name PSGallery -InstallationPolicy Trusted -Force
+      - name: Install FXPSYaml Module
+        shell: pwsh
+        run: Install-Module FXPSYaml -Force
       - name: Import Module
-        run: powershell -c "Import-Module .\CMAWS.psd1"
+        shell: pwsh
+        run: Import-Module .\CMAWS.psd1
       - name: publish module
-        run: powershell -c "Publish-Module -Path . -NuGetApiKey ${{ secrets.API_KEY }} -Force"
+        shell: pwsh
+        run: Publish-Module -Path . -NuGetApiKey ${{ secrets.API_KEY }} -Force
