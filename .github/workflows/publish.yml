@@ -15,9 +15,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Update PowerShell Get
-        run: powershell -c "Update-Module PowerShellGet -Force"
+      # - name: Update PowerShell Get
+      #   run: powershell -c "Update-Module PowerShellGet -Force"
       - name: Import Module
-        run: powershell -c "Import-Module ."
+        run: powershell -c "Import-Module .\CMAWS.psd1"
       - name: publish module
         run: powershell -c "Publish-Module -Path . -NuGetApiKey ${{ secrets.API_KEY }} -Force"
